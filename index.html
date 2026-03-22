@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt Manager</title>
+    <script>
+      // Fix for @google/genai trying to polyfill fetch in environments where it's read-only
+      if (typeof window !== 'undefined') {
+        const originalFetch = window.fetch;
+        try {
+          Object.defineProperty(window, 'fetch', {
+            configurable: true,
+            enumerable: true,
+            get() { return originalFetch; },
+            set() { /* ignore */ }
+          });
+        } catch (e) {
+          console.warn('Could not redefine window.fetch', e);
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

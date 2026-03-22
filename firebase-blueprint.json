@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User's profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" }
+      },
+      "required": ["displayName", "email"]
+    },
+    "BillSession": {
+      "title": "Bill Session",
+      "description": "A past bill splitting session.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "receiptData": { "type": "object" },
+        "people": { "type": "array", "items": { "type": "string" } },
+        "totals": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["ownerUid", "date", "receiptData", "people", "totals"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "BillSession",
+      "description": "Past bill splitting sessions."
+    }
+  }
+}

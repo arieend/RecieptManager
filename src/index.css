@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+.markdown-body {
+  @apply text-sm leading-relaxed break-words;
+}
+
+.markdown-body p {
+  @apply mb-2 last:mb-0;
+}
+
+.markdown-body a {
+  @apply text-emerald-600 underline underline-offset-2 hover:text-emerald-700 transition-colors;
+}
+
+.markdown-body strong {
+  @apply font-semibold;
+}
+
+.markdown-body ul {
+  @apply list-disc list-inside mb-2;
+}
+
+.markdown-body ol {
+  @apply list-decimal list-inside mb-2;
+}

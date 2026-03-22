@@ -1,0 +1,5 @@
+{
+  "name": "Receipt Manager",
+  "description": "AI-powered bill splitting app with receipt parsing and natural language cost assignment.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}
