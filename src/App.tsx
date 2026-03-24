@@ -25,13 +25,16 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ReceiptData, ReceiptItem, PersonTotal, ChatMessage, UserProfile, BillSession } from './types';
 import { parseReceiptImage, interpretChatCommand, transcribeStoreName } from './services/geminiService';
+import { resizeImage } from './utils/imageUtils';
 import { Language, translations } from './translations';
-import { auth, db, googleProvider, signInWithPopup, signOut, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, deleteDoc, getDocs } from './firebase';
+import { auth, db, googleProvider, signInWithPopup, signOut, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, deleteDoc, getDocs, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser, GoogleAuthProvider } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import { getOrCreateFolder, uploadPdfToDrive, checkFileExists } from './services/driveService';
 import Markdown from 'react-markdown';
+
+import { Scanner } from './components/Scanner';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -56,6 +59,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currency, setCurrency] = useState('₪');
   const [language, setLanguage] = useState<Language>('he');
@@ -81,10 +85,10 @@ export default function App() {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
             const newProfile = { uid: u.uid, displayName: u.displayName || 'User', email: u.email || '' };
-            setDoc(userRef, newProfile);
+            setDoc(userRef, newProfile).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${u.uid}`));
             setUserProfile(newProfile);
           }
-        }, (err) => console.error("User profile snapshot error:", err));
+        }, (err) => handleFirestoreError(err, OperationType.GET, `users/${u.uid}`));
 
         // Fetch history
         const historyQuery = query(
@@ -95,7 +99,7 @@ export default function App() {
         unsubHistory = onSnapshot(historyQuery, (snap) => {
           const sessions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as BillSession));
           setHistory(sessions);
-        }, (err) => console.error("History snapshot error:", err));
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'sessions'));
       } else {
         setUserProfile(null);
         setHistory([]);
@@ -117,9 +121,11 @@ export default function App() {
 
   const handleLogin = async () => {
     try {
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
+        console.log("[Auth] Google Drive token obtained during login");
         sessionStorage.setItem('driveAccessToken', credential.accessToken);
       }
     } catch (error) {
@@ -144,9 +150,11 @@ export default function App() {
     if (!user) return;
     try {
       const historyQuery = query(collection(db, 'sessions'), where('ownerUid', '==', user.uid));
-      const snapshot = await getDocs(historyQuery);
-      const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'sessions', docSnap.id)));
-      await Promise.all(deletePromises);
+      const snapshot = await getDocs(historyQuery).catch(err => handleFirestoreError(err, OperationType.LIST, 'sessions'));
+      if (snapshot) {
+        const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'sessions', docSnap.id)).catch(err => handleFirestoreError(err, OperationType.DELETE, `sessions/${docSnap.id}`)));
+        await Promise.all(deletePromises);
+      }
       setHistory([]);
       if (currentSessionId) {
         setCurrentSessionId(null);
@@ -159,7 +167,7 @@ export default function App() {
   const handleDeleteSession = async (sessionId: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, 'sessions', sessionId));
+      await deleteDoc(doc(db, 'sessions', sessionId)).catch(err => handleFirestoreError(err, OperationType.DELETE, `sessions/${sessionId}`));
       setHistory(prev => prev.filter(session => session.id !== sessionId));
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
@@ -209,23 +217,33 @@ export default function App() {
         compressedImage = isPdf ? receiptImage : await compressImage(receiptImage);
 
         let token = sessionStorage.getItem('driveAccessToken');
-        if (token === 'undefined' || token === 'null') {
+        if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
           token = null;
           sessionStorage.removeItem('driveAccessToken');
         }
+
         let uploadSuccess = false;
         let retryCount = 0;
 
         while (!uploadSuccess && retryCount < 2) {
           if (!token) {
             try {
+              console.log(`[Drive] Requesting access token (attempt ${retryCount + 1})...`);
+              // Use 'consent' to ensure we get a fresh token with all scopes
               googleProvider.setCustomParameters({ prompt: 'consent' });
               const result = await signInWithPopup(auth, googleProvider);
               const credential = GoogleAuthProvider.credentialFromResult(result);
               token = credential?.accessToken || null;
-              if (token) sessionStorage.setItem('driveAccessToken', token);
+              
+              if (token) {
+                console.log("[Drive] New access token obtained");
+                sessionStorage.setItem('driveAccessToken', token);
+              } else {
+                console.warn("[Drive] No access token returned from popup");
+                break;
+              }
             } catch (e) {
-              console.error("Failed to get Drive token", e);
+              console.error("[Drive] Failed to get Drive token via popup", e);
               break;
             }
           }
@@ -245,6 +263,7 @@ export default function App() {
               const totalsum = receiptData.total.toFixed(2);
               const fileName = `${brand}_${datetime}_${totalsum}.pdf`;
 
+              console.log(`[Drive] Uploading ${fileName} to Drive...`);
               const rootFolderId = await getOrCreateFolder(token, 'Receipts');
               const yearFolderId = await getOrCreateFolder(token, year, rootFolderId);
               const monthFolderId = await getOrCreateFolder(token, month, yearFolderId);
@@ -252,6 +271,7 @@ export default function App() {
               const existingFileUrl = await checkFileExists(token, fileName, monthFolderId);
               
               if (existingFileUrl) {
+                console.log("[Drive] File already exists, using existing URL");
                 driveFileUrl = existingFileUrl;
               } else {
                 let pdfBlob: Blob;
@@ -274,13 +294,15 @@ export default function App() {
                 }
 
                 driveFileUrl = await uploadPdfToDrive(token, pdfBlob, fileName, monthFolderId);
+                console.log("[Drive] Upload successful");
               }
               uploadSuccess = true;
             } catch (e: any) {
-              console.error("Failed to upload to Google Drive", e);
               const errorMsg = e?.message || '';
+              console.warn(`[Drive] Upload attempt ${retryCount + 1} failed:`, errorMsg);
               
-              if (errorMsg.includes('401') || errorMsg.includes('UNAUTHENTICATED')) {
+              if (errorMsg.includes('401') || errorMsg.includes('UNAUTHENTICATED') || errorMsg.includes('Invalid Credentials')) {
+                console.log("[Drive] Token expired or invalid, clearing and retrying...");
                 sessionStorage.removeItem('driveAccessToken');
                 token = null;
                 retryCount++;
@@ -296,6 +318,7 @@ export default function App() {
                   content: `⚠️ **Google Drive API is disabled.**\n\nPlease enable the Google Drive API in your Google Cloud Console to save receipts to Drive. You can enable it here: [Google Cloud Console](${enableUrl})\n\nThe session was saved, but the receipt image was not uploaded to Drive.`
                 }]);
               } else {
+                console.error("[Drive] Non-auth error during upload:", e);
                 setMessages(prev => [...prev, {
                   id: Date.now().toString() + '-err',
                   role: 'assistant',
@@ -323,20 +346,22 @@ export default function App() {
       };
 
       if (currentSessionId) {
-        await setDoc(doc(db, 'sessions', currentSessionId), sessionData, { merge: true });
+        await setDoc(doc(db, 'sessions', currentSessionId), sessionData, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, `sessions/${currentSessionId}`));
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           role: 'assistant',
           content: "Session updated in your history!"
         }]);
       } else {
-        const docRef = await addDoc(collection(db, 'sessions'), sessionData);
-        setCurrentSessionId(docRef.id);
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: "Session saved to your history!"
-        }]);
+        const docRef = await addDoc(collection(db, 'sessions'), sessionData).catch(err => handleFirestoreError(err, OperationType.CREATE, 'sessions'));
+        if (docRef) {
+          setCurrentSessionId(docRef.id);
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "Session saved to your history!"
+          }]);
+        }
       }
     } catch (error: any) {
       console.error("Save error:", error);
@@ -437,7 +462,7 @@ export default function App() {
         displayName: newName, 
         email: userProfile?.email || user.email || '' 
       };
-      await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true });
+      await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`));
       setUserProfile(prev => prev ? { ...prev, displayName: newName } : updatedProfile);
     } catch (error) {
       console.error("Profile update error:", error);
@@ -464,53 +489,77 @@ export default function App() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Reset input value to allow re-selecting the same file
+    e.target.value = '';
+    
+    processFile(file);
+  };
+
+  const processFile = async (fileOrBase64: File | string) => {
+    const isBase64 = typeof fileOrBase64 === 'string';
+    const fileName = isBase64 ? 'captured_photo.jpg' : (fileOrBase64 as File).name;
+    const fileType = isBase64 ? 'image/jpeg' : (fileOrBase64 as File).type;
+
+    console.log(`[File Upload] Starting processing for: ${fileName} (${fileType})`);
 
     setParsing(true);
     setCurrentSessionId(null);
     setReceiptData(null);
     setReceiptImage(null);
+
     try {
-      const reader = new FileReader();
-      reader.onerror = (error) => {
-        console.error("FileReader error:", error);
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: `Error reading file: ${error}`
-        }]);
-        setParsing(false);
-      };
-      reader.onload = async () => {
+      let processedBase64: string;
+      const mimeType = fileType || 'image/jpeg';
+
+      if (isBase64) {
+        processedBase64 = fileOrBase64 as string;
+      } else if (fileType.startsWith('image/')) {
         try {
-          const fullBase64 = reader.result as string;
-          if (!fullBase64.includes(',')) {
-            throw new Error("Invalid image data format.");
-          }
-          setReceiptImage(fullBase64); // Set image immediately so user can "View Original" while parsing
-          
-          const base64 = fullBase64.split(',')[1];
-          const mimeType = file.type || 'image/jpeg';
-          const data = await parseReceiptImage(base64, mimeType);
-          setReceiptData(data);
-          setMessages([{
-            id: 'welcome',
-            role: 'assistant',
-            content: t.welcomeMessage
-          }]);
-        } catch (error: any) {
-          console.error("Error parsing receipt:", error);
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `${t.parseErrorMessage}\n\nError: ${error?.message || 'Unknown error'}`
-          }]);
-        } finally {
-          setParsing(false);
+          console.log("[File Upload] Resizing image...");
+          processedBase64 = await resizeImage(fileOrBase64 as File);
+          console.log("[File Upload] Image resized successfully");
+        } catch (resizeErr) {
+          console.warn("[File Upload] Failed to resize image, falling back to FileReader:", resizeErr);
+          processedBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(fileOrBase64 as File);
+          });
         }
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Error reading file:", error);
+      } else {
+        console.log("[File Upload] Reading non-image file...");
+        processedBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(fileOrBase64 as File);
+        });
+      }
+
+      setReceiptImage(processedBase64);
+      
+      console.log("[File Upload] Sending to Gemini for parsing...");
+      const base64 = processedBase64.includes(',') ? processedBase64.split(',')[1] : processedBase64;
+      const data = await parseReceiptImage(base64, mimeType);
+      console.log("[File Upload] Gemini parsing complete:", data.storeName);
+      
+      setReceiptData(data);
+      setMessages([{
+        id: 'welcome',
+        role: 'assistant',
+        content: t.welcomeMessage
+      }]);
+    } catch (error: any) {
+      console.error("[File Upload] Error processing file:", error);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `${t.parseErrorMessage}\n\nError: ${error?.message || 'Unknown error'}`
+      }]);
+    } finally {
+      console.log("[File Upload] Done processing, setting parsing to false");
       setParsing(false);
     }
   };
@@ -613,8 +662,8 @@ export default function App() {
             </div>
             <h1 className="font-bold text-xl tracking-tight">{t.appTitle}</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{t.language}</span>
               <div className="flex bg-zinc-100 rounded-lg p-1">
                 <button 
@@ -634,7 +683,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{t.currency}</span>
+              <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-zinc-400">{t.currency}</span>
               <select 
                 value={currency} 
                 onChange={(e) => setCurrency(e.target.value)}
@@ -653,11 +702,11 @@ export default function App() {
                 className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all"
               >
                 <Plus size={14} />
-                {t.newReceipt}
+                <span className="hidden sm:inline">{t.newReceipt}</span>
               </button>
             )}
             {user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <button 
                   onClick={() => setShowHistory(true)}
                   className="p-2 text-zinc-500 hover:text-emerald-600 hover:bg-zinc-100 rounded-full transition-all"
@@ -672,7 +721,7 @@ export default function App() {
                   <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-xs">
                     {userProfile?.displayName?.[0] || 'U'}
                   </div>
-                  <span className="text-xs font-medium text-zinc-700">{userProfile?.displayName}</span>
+                  <span className="hidden md:inline text-xs font-medium text-zinc-700">{userProfile?.displayName}</span>
                 </button>
                 <button 
                   onClick={() => setConfirmModal({ isOpen: true, type: 'reset' })}
@@ -692,16 +741,33 @@ export default function App() {
             ) : (
               <button 
                 onClick={handleLogin}
-                className="flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-zinc-800 transition-all"
+                className="flex items-center gap-2 bg-zinc-900 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-medium hover:bg-zinc-800 transition-all"
               >
                 <LogIn size={16} />
-                {t.loginWithGoogle}
+                <span className="hidden sm:inline">{t.loginWithGoogle}</span>
               </button>
             )}
           </div>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Hidden inputs always mounted to avoid ref/event issues on remount */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileUpload} 
+          accept="image/*,application/pdf" 
+          className="hidden" 
+        />
+        <input 
+          type="file" 
+          ref={cameraInputRef} 
+          onChange={handleFileUpload} 
+          accept="image/*" 
+          capture="environment" 
+          className="hidden" 
+        />
+
         {/* Left Pane: Receipt & Summary */}
         <div className={`
           ${fullscreenPane === 'left' ? 'flex-1 w-full' : fullscreenPane === 'right' ? 'hidden' : 'flex-1 md:flex-none md:w-1/2'} 
@@ -719,21 +785,25 @@ export default function App() {
             <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
               {parsing && receiptImage ? (
                 <div className="w-full max-w-xs space-y-4">
-                  <button 
-                    onClick={() => setShowReceiptUrl(receiptImage)}
-                    className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border border-zinc-200 group"
-                  >
+                  <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border border-zinc-200 group">
                     {!receiptImage.startsWith('https://drive.google.com/') && (
-                      <img src={receiptImage} alt="Parsing..." className="w-full h-full object-cover opacity-80 transition-transform group-hover:scale-105" />
+                      <img src={receiptImage} alt="Parsing..." className="w-full h-full object-cover opacity-80" />
                     )}
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 backdrop-blur-[1px]">
                       <Loader2 className="animate-spin text-white mb-2" size={32} />
                       <p className="text-white font-bold text-sm">{t.parsingReceipt}</p>
-                      <span className="mt-4 text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-white/80 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        {t.viewOriginal}
-                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setParsing(false);
+                          setReceiptImage(null);
+                        }}
+                        className="mt-4 text-[10px] font-bold uppercase tracking-widest text-white bg-red-600/80 px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        {language === 'he' ? 'ביטול' : 'Cancel'}
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -746,9 +816,7 @@ export default function App() {
                       {t.uploadDesc}
                     </p>
                   </div>
-                </>
-              )}
-              <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={parsing}
@@ -764,9 +832,9 @@ export default function App() {
                   )}
                 </button>
                 <button 
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={() => setShowScanner(true)}
                   disabled={parsing}
-                  className="bg-zinc-800 hover:bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium flex md:hidden items-center justify-center gap-2 transition-all disabled:opacity-50 min-w-[160px]"
+                  className="bg-zinc-800 hover:bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 min-w-[160px]"
                 >
                   {parsing ? (
                     <Loader2 className="animate-spin" size={20} />
@@ -778,24 +846,11 @@ export default function App() {
                   )}
                 </button>
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept="image/*,application/pdf" 
-                className="hidden" 
-              />
-              <input 
-                type="file" 
-                ref={cameraInputRef} 
-                onChange={handleFileUpload} 
-                accept="image/*" 
-                capture="environment"
-                className="hidden" 
-              />
-            </div>
-          ) : (
-            <div className="space-y-10">
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-10">
               <section>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
@@ -986,7 +1041,7 @@ export default function App() {
                     <span>{currency}{receiptData.total.toFixed(2)}</span>
                   </div>
                   
-                  {user && (
+                  {user ? (
                     <button 
                       onClick={handleSaveSession}
                       disabled={saving}
@@ -994,6 +1049,14 @@ export default function App() {
                     >
                       {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                       {saving ? t.saving : t.saveSession}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleLogin}
+                      className="w-full mt-6 bg-emerald-600 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                    >
+                      <LogIn size={18} />
+                      {language === 'he' ? 'התחבר עם גוגל כדי לשמור' : 'Login with Google to Save'}
                     </button>
                   )}
                 </div>
@@ -1573,6 +1636,40 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showScanner && (
+          <Scanner 
+            language={language}
+            onClose={() => setShowScanner(false)}
+            onFallback={() => {
+              setShowScanner(false);
+              cameraInputRef.current?.click();
+            }}
+            onCapture={(base64) => {
+              setShowScanner(false);
+              processFile(base64);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Floating Action Button for New Receipt */}
+      {receiptData && !showScanner && (
+        <motion.div 
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="md:hidden fixed bottom-6 right-6 z-40"
+        >
+          <button 
+            onClick={() => setConfirmModal({ isOpen: true, type: 'new' })}
+            className="w-14 h-14 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-emerald-700 transition-all active:scale-95"
+            title={t.newReceipt}
+          >
+            <Plus size={24} />
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }

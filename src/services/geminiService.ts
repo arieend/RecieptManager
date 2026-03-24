@@ -3,17 +3,12 @@ import { ReceiptData, ReceiptItem } from "../types";
 import { Language } from "../translations";
 
 // Lazy initialization to prevent startup crashes if the API key is missing
-let aiClient: GoogleGenAI | null = null;
-
 const getAIClient = (): GoogleGenAI => {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required.");
-    }
-    aiClient = new GoogleGenAI({ apiKey });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY environment variable is required.");
   }
-  return aiClient;
+  return new GoogleGenAI({ apiKey });
 };
 
 const MODEL_NAME = "gemini-3-flash-preview";
@@ -39,9 +34,13 @@ interface LLMReceiptResponse {
 }
 
 export const parseReceiptImage = async (base64Image: string, mimeType: string): Promise<ReceiptData> => {
+  const timeoutPromise = new Promise<never>((_, reject) => 
+    setTimeout(() => reject(new Error("Parsing timed out. Please try again with a clearer photo.")), 45000)
+  );
+
   try {
     const ai = getAIClient();
-    const response = await ai.models.generateContent({
+    const generatePromise = ai.models.generateContent({
       model: MODEL_NAME,
       contents: [
         {
@@ -84,6 +83,7 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string): 
       },
     });
 
+    const response = await Promise.race([generatePromise, timeoutPromise]);
     const data = safeParseJSON<LLMReceiptResponse>(response.text, {});
     
     // Add unique IDs and ensure types
