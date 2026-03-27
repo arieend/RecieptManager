@@ -3,7 +3,7 @@
  * Resizes an image to a maximum width or height, maintaining aspect ratio.
  * Returns a base64 string.
  */
-export const resizeImage = (file: File | Blob, maxWidth: number = 1600, maxHeight: number = 1600): Promise<string> => {
+export const resizeImage = (file: File | Blob, maxWidth: number = 1000, maxHeight: number = 1000): Promise<string> => {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error("Image processing timed out. The file might be corrupted or too large."));
@@ -28,7 +28,7 @@ export const resizeImage = (file: File | Blob, maxWidth: number = 1600, maxHeigh
           return;
         }
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
         return;
       }
 
@@ -54,7 +54,7 @@ export const resizeImage = (file: File | Blob, maxWidth: number = 1600, maxHeigh
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.8));
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
     };
 
     img.onerror = () => {

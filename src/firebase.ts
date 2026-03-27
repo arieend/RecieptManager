@@ -73,4 +73,8 @@ async function testConnection() {
 }
 testConnection();
 
-export { collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, signInWithPopup, signOut, deleteDoc, getDocs };
+export { 
+  collection, doc, setDoc, getDoc, addDoc, query, where, 
+  onSnapshot, orderBy, signInWithPopup, signOut, deleteDoc, 
+  getDocs, GoogleAuthProvider 
+};

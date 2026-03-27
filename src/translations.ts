@@ -54,6 +54,42 @@ export interface Translations {
   newReceipt: string;
   viewOriginal: string;
   takePhoto: string;
+  clearAll: string;
+  driveStatus: string;
+  driveConnected: string;
+  driveDisconnected: string;
+  reconnectDrive: string;
+  welcome: string;
+  user: string;
+  readyToSplit: string;
+  scanReceipt: string;
+  uploadFile: string;
+  recentHistory: string;
+  viewAll: string;
+  unknownStore: string;
+  items: string;
+  startScanning: string;
+  summary: string;
+  totalAmount: string;
+  people: string;
+  aiAssistant: string;
+  aiHint: string;
+  typeCommand: string;
+  accountSettings: string;
+  emailNotifications: string;
+  enabled: string;
+  privacySecurity: string;
+  managedByGoogle: string;
+  dangerZone: string;
+  completed: string;
+  invalidPrice: string;
+  confirm: string;
+  cancel: string;
+  cameraPermissionDenied: string;
+  cameraPermissionDismissed: string;
+  cameraGenericError: string;
+  howToEnableCamera: string;
+  noImage: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -111,6 +147,42 @@ export const translations: Record<Language, Translations> = {
     newReceipt: "New Receipt",
     viewOriginal: "View Original",
     takePhoto: "Take Photo",
+    clearAll: "Clear All",
+    driveStatus: "Google Drive Status",
+    driveConnected: "Connected",
+    driveDisconnected: "Disconnected",
+    reconnectDrive: "Connect Google Drive",
+    welcome: "Welcome",
+    user: "User",
+    readyToSplit: "Ready to split some bills?",
+    scanReceipt: "Scan Receipt",
+    uploadFile: "Upload File",
+    recentHistory: "Recent History",
+    viewAll: "View All",
+    unknownStore: "Unknown Store",
+    items: "items",
+    startScanning: "Start Scanning",
+    summary: "Summary",
+    totalAmount: "Total Amount",
+    people: "Labels",
+    aiAssistant: "AI Assistant",
+    aiHint: "You can ask me to assign items or add new ones. For example: 'Assign the burger to Food'.",
+    typeCommand: "Type a command...",
+    accountSettings: "Account Settings",
+    emailNotifications: "Email Notifications",
+    enabled: "Enabled",
+    privacySecurity: "Privacy & Security",
+    managedByGoogle: "Managed by Google",
+    dangerZone: "Danger Zone",
+    completed: "Completed",
+    invalidPrice: "Please enter a valid positive number for the price.",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    cameraPermissionDenied: "Camera access was denied. Please enable it in your browser settings to scan receipts.",
+    cameraPermissionDismissed: "Camera permission request was dismissed. Please try again and grant access.",
+    cameraGenericError: "Could not access camera. Please ensure your device has a camera and permissions are granted.",
+    howToEnableCamera: "To enable: Click the lock icon in your browser's address bar and set Camera to 'Allow'.",
+    noImage: "No image available for this session.",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -166,5 +238,41 @@ export const translations: Record<Language, Translations> = {
     newReceipt: "קבלה חדשה",
     viewOriginal: "צפה במקור",
     takePhoto: "צלם קבלה",
+    clearAll: "נקה הכל",
+    driveStatus: "סטטוס Google Drive",
+    driveConnected: "מחובר",
+    driveDisconnected: "מנותק",
+    reconnectDrive: "חבר את Google Drive",
+    welcome: "ברוכים הבאים",
+    user: "משתמש",
+    readyToSplit: "מוכנים לחלק כמה חשבונות?",
+    scanReceipt: "סרוק קבלה",
+    uploadFile: "העלה קובץ",
+    recentHistory: "היסטוריה אחרונה",
+    viewAll: "צפה בהכל",
+    unknownStore: "חנות לא ידועה",
+    items: "פריטים",
+    startScanning: "התחל לסרוק",
+    summary: "סיכום",
+    totalAmount: "סכום כולל",
+    people: "תוויות",
+    aiAssistant: "עוזר בינה מלאכותית",
+    aiHint: "אפשר לבקש ממני לשייך פריטים או להוסיף חדשים. למשל: 'שייך את ההמבורגר לאוכל'.",
+    typeCommand: "הקלד פקודה...",
+    accountSettings: "הגדרות חשבון",
+    emailNotifications: "התראות אימייל",
+    enabled: "פעיל",
+    privacySecurity: "פרטיות ואבטחה",
+    managedByGoogle: "מנוהל על ידי גוגל",
+    dangerZone: "אזור סכנה",
+    completed: "הושלם",
+    invalidPrice: "אנא הזינו מספר חיובי תקין עבור המחיר.",
+    confirm: "אישור",
+    cancel: "ביטול",
+    cameraPermissionDenied: "הגישה למצלמה נדחתה. אנא אפשרו גישה בהגדרות הדפדפן כדי לסרוק קבלות.",
+    cameraPermissionDismissed: "בקשת ההרשאה למצלמה נסגרה. אנא נסו שוב ואשרו את הגישה.",
+    cameraGenericError: "לא ניתן לגשת למצלמה. וודאו שיש לכם מצלמה תקינה ושהרשאות ניתנו.",
+    howToEnableCamera: "כדי לאפשר: לחצו על סמל המנעול בשורת הכתובת של הדפדפן והגדירו את המצלמה ל-'אפשר'.",
+    noImage: "אין תמונה זמינה לסשן זה.",
   }
 };

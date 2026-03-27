@@ -1,48 +1,37 @@
-export interface UserProfile {
-  uid: string;
-  displayName: string;
-  email: string;
-}
-
-export interface BillSession {
-  id?: string;
-  ownerUid: string;
-  date: any; // Firestore Timestamp
-  receiptData: ReceiptData;
-  people: string[];
-  totals: PersonTotal[];
-  currency: string;
-  receiptImageUrl?: string;
-}
+export type Language = 'en' | 'he';
 
 export interface ReceiptItem {
   id: string;
   name: string;
   price: number;
-  category?: string;
-  assignedTo: string[]; // List of person names
+  assignedTo: string[]; // Array of Person IDs
 }
 
-export interface ReceiptData {
-  storeName?: string;
-  items: ReceiptItem[];
-  tax: number;
-  tip: number;
-  total: number;
-  currency?: string;
-  receiptImageUrl?: string;
-}
-
-export interface PersonTotal {
-  name: string;
-  subtotal: number;
-  tax: number;
-  tip: number;
-  total: number;
-}
-
-export interface ChatMessage {
+export interface Person {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
+  name: string;
+  color: string;
+}
+
+export interface Session {
+  id: string;
+  userId: string;
+  storeName: string;
+  createdAt: string;
+  items: ReceiptItem[];
+  people: Person[];
+  tax: number;
+  tip: number;
+  total: number;
+  imageUrl?: string;
+  driveFileId?: string;
+  driveLink?: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  createdAt: string;
 }

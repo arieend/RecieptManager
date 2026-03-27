@@ -1,5 +1,5 @@
 {
   "name": "Receipt Manager",
-  "description": "AI-powered bill splitting app with receipt parsing and natural language cost assignment.",
+  "description": "Snap a photo or upload a PDF of your bill and our AI will parse the items and prices for you.",
   "requestFramePermissions": ["camera", "microphone", "geolocation"]
 }

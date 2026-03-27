@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Camera, X, Zap, ZapOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { translations } from '../translations';
 
 interface ScannerProps {
   onCapture: (base64: string) => void;
@@ -40,7 +41,15 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
       setError(null);
     } catch (err: any) {
       console.error("Camera error:", err);
-      setError(language === 'he' ? 'לא ניתן לגשת למצלמה. אנא וודאו שנתתם הרשאות.' : 'Could not access camera. Please ensure permissions are granted.');
+      const t = translations[language];
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.toLowerCase().includes('denied')) {
+        setError(t.cameraPermissionDenied);
+      } else if (err.message?.toLowerCase().includes('dismissed')) {
+        setError(t.cameraPermissionDismissed);
+      } else {
+        setError(t.cameraGenericError);
+      }
     }
   };
 
@@ -105,20 +114,28 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
       {/* Camera View */}
       <div className="flex-1 relative overflow-hidden flex items-center justify-center">
         {error ? (
-          <div className="p-8 text-center text-white flex flex-col gap-4">
-            <p className="mb-2">{error}</p>
-            <button 
-              onClick={() => startCamera(facingMode)}
-              className="px-6 py-3 bg-emerald-600 rounded-xl font-bold"
-            >
-              {language === 'he' ? 'נסה שוב' : 'Try Again'}
-            </button>
-            <button 
-              onClick={onFallback}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-colors"
-            >
-              {language === 'he' ? 'השתמש במצלמת המערכת' : 'Use System Camera'}
-            </button>
+          <div className="p-8 text-center text-white flex flex-col gap-6 max-w-sm">
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-red-400">{error}</p>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                {translations[language].howToEnableCamera}
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => startCamera(facingMode)}
+                className="px-6 py-3 bg-emerald-600 rounded-xl font-bold shadow-lg shadow-emerald-900/20 active:scale-95 transition-all"
+              >
+                {language === 'he' ? 'נסה שוב' : 'Try Again'}
+              </button>
+              <button 
+                onClick={onFallback}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-colors"
+              >
+                {language === 'he' ? 'השתמש במצלמת המערכת' : 'Use System Camera'}
+              </button>
+            </div>
           </div>
         ) : (
           <>

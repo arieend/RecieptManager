@@ -5,23 +5,33 @@
       "description": "User's profile information.",
       "type": "object",
       "properties": {
+        "uid": { "type": "string" },
         "displayName": { "type": "string" },
-        "email": { "type": "string", "format": "email" }
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["displayName", "email"]
+      "required": ["uid", "displayName", "email", "createdAt"]
     },
-    "BillSession": {
-      "title": "Bill Session",
-      "description": "A past bill splitting session.",
+    "Session": {
+      "title": "Session",
+      "description": "A bill splitting session.",
       "type": "object",
       "properties": {
-        "ownerUid": { "type": "string" },
-        "date": { "type": "string", "format": "date-time" },
-        "receiptData": { "type": "object" },
-        "people": { "type": "array", "items": { "type": "string" } },
-        "totals": { "type": "array", "items": { "type": "object" } }
+        "userId": { "type": "string" },
+        "storeName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "people": { "type": "array", "items": { "type": "object" } },
+        "tax": { "type": "number" },
+        "tip": { "type": "number" },
+        "total": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "id": { "type": "string" },
+        "driveFileId": { "type": "string" },
+        "driveLink": { "type": "string" }
       },
-      "required": ["ownerUid", "date", "receiptData", "people", "totals"]
+      "required": ["userId", "storeName", "createdAt", "items", "people", "tax", "tip", "total"]
     }
   },
   "firestore": {
@@ -30,8 +40,8 @@
       "description": "User profile documents."
     },
     "/sessions/{sessionId}": {
-      "schema": "BillSession",
-      "description": "Past bill splitting sessions."
+      "schema": "Session",
+      "description": "Bill splitting sessions."
     }
   }
 }
