@@ -90,6 +90,18 @@ export interface Translations {
   cameraGenericError: string;
   howToEnableCamera: string;
   noImage: string;
+  settings: string;
+  storagePath: string;
+  directoryStructure: string;
+  year: string;
+  month: string;
+  day: string;
+  autoSave: string;
+  saveSettings: string;
+  settingsSaved: string;
+  usd: string;
+  eur: string;
+  ils: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -183,6 +195,18 @@ export const translations: Record<Language, Translations> = {
     cameraGenericError: "Could not access camera. Please ensure your device has a camera and permissions are granted.",
     howToEnableCamera: "To enable: Click the lock icon in your browser's address bar and set Camera to 'Allow'.",
     noImage: "No image available for this session.",
+    settings: "Settings",
+    storagePath: "Storage Path",
+    directoryStructure: "Directory Structure",
+    year: "Year",
+    month: "Month",
+    day: "Day",
+    autoSave: "Auto-Save immediately after extraction",
+    saveSettings: "Save Settings",
+    settingsSaved: "Settings saved successfully!",
+    usd: "USD ($)",
+    eur: "EUR (€)",
+    ils: "NIS (₪)",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -274,5 +298,17 @@ export const translations: Record<Language, Translations> = {
     cameraGenericError: "לא ניתן לגשת למצלמה. וודאו שיש לכם מצלמה תקינה ושהרשאות ניתנו.",
     howToEnableCamera: "כדי לאפשר: לחצו על סמל המנעול בשורת הכתובת של הדפדפן והגדירו את המצלמה ל-'אפשר'.",
     noImage: "אין תמונה זמינה לסשן זה.",
+    settings: "הגדרות",
+    storagePath: "נתיב אחסון",
+    directoryStructure: "מבנה תיקיות",
+    year: "שנה",
+    month: "חודש",
+    day: "יום",
+    autoSave: "שמירה אוטומטית מיד לאחר הניתוח",
+    saveSettings: "שמור הגדרות",
+    settingsSaved: "ההגדרות נשמרו בהצלחה!",
+    usd: "דולר ($)",
+    eur: "אירו (€)",
+    ils: "שקל (₪)",
   }
 };

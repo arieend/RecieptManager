@@ -17,10 +17,11 @@ interface SessionViewProps {
   onChat: (command: string) => void;
   translations: any;
   language: 'en' | 'he';
+  currencySymbol: string;
 }
 
 export const SessionView: React.FC<SessionViewProps> = ({ 
-  session, setSession, onBack, onSave, onDelete, onChat, translations, language 
+  session, setSession, onBack, onSave, onDelete, onChat, translations, language, currencySymbol 
 }) => {
   const [chatInput, setChatInput] = useState('');
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -162,6 +163,11 @@ export const SessionView: React.FC<SessionViewProps> = ({
           <div>
             <h2 className="font-black text-slate-900 tracking-tight">
               {session.storeName || translations[language].unknownStore}
+              {session.englishStoreName && session.englishStoreName !== session.storeName && (
+                <span className="text-slate-400 font-medium ml-2 text-sm">
+                  ({session.englishStoreName})
+                </span>
+              )}
             </h2>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
               {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US')}
@@ -192,7 +198,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider">{translations[language].summary}</span>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-black">{translations[language].currency}{totals.total.toFixed(2)}</p>
+              <p className="text-3xl font-black">{currencySymbol}{totals.total.toFixed(2)}</p>
               <p className="text-xs font-medium opacity-80">{translations[language].totalAmount}</p>
             </div>
           </div>
@@ -201,7 +207,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
             {totals.personTotals.map((p) => (
               <div key={p.id} className="flex justify-between items-center bg-white/10 p-3 rounded-2xl">
                 <span className="font-bold">{p.name}</span>
-                <span className="font-black text-lg">{translations[language].currency}{p.amount.toFixed(2)}</span>
+                <span className="font-black text-lg">{currencySymbol}{p.amount.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -245,7 +251,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-bold text-slate-900">{item.name}</h4>
-                    <p className="text-sm font-black text-emerald-600">{translations[language].currency}{item.price.toFixed(2)}</p>
+                    <p className="text-sm font-black text-emerald-600">{currencySymbol}{item.price.toFixed(2)}</p>
                   </div>
                   <div className="flex -space-x-2 rtl:space-x-reverse">
                     {item.assignedTo.map((pid: string) => {

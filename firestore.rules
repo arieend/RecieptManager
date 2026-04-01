@@ -19,6 +19,7 @@ service cloud.firestore {
     // Fields:
     //   - userId: string (required, immutable)
     //   - storeName: string (required)
+    //   - englishStoreName: string (optional)
     //   - createdAt: string (required, ISO 8601)
     //   - items: list (required)
     //   - people: list (required)
@@ -59,6 +60,7 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'storeName', 'createdAt', 'items', 'people', 'tax', 'tip', 'total']) &&
              data.userId == request.auth.uid &&
              data.storeName is string && data.storeName.size() > 0 &&
+             (!('englishStoreName' in data) || (data.englishStoreName is string && data.englishStoreName.size() > 0)) &&
              data.createdAt is string && data.createdAt.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$") &&
              (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$"))) &&
              data.items is list &&

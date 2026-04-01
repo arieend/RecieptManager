@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Settings } from 'lucide-react';
 import { Button } from './ui/Base';
 import { IsraelFlag, USFlag } from './Flags';
 
@@ -8,12 +8,13 @@ interface HeaderProps {
   language: 'en' | 'he';
   setLanguage: (lang: 'en' | 'he') => void;
   onProfileClick: () => void;
+  onSettingsClick: () => void;
   onLogout: () => void;
   translations: any;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  user, language, setLanguage, onProfileClick, onLogout, translations 
+  user, language, setLanguage, onProfileClick, onSettingsClick, onLogout, translations 
 }) => (
   <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 px-4 py-3 flex justify-between items-center">
     <div className="flex items-center gap-3">
@@ -49,6 +50,14 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onSettingsClick}
+            className="text-slate-400 hover:text-emerald-500"
+          >
+            <Settings size={20} />
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 

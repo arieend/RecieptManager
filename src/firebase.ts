@@ -60,6 +60,7 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 googleProvider.addScope('https://www.googleapis.com/auth/drive.metadata.readonly');
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Test connection
 async function testConnection() {

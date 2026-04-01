@@ -20,6 +20,7 @@
       "properties": {
         "userId": { "type": "string" },
         "storeName": { "type": "string" },
+        "englishStoreName": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "items": { "type": "array", "items": { "type": "object" } },
         "people": { "type": "array", "items": { "type": "object" } },

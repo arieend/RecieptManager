@@ -7,13 +7,13 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
   
   const prompt = `
     Analyze this receipt ${mimeType.includes('pdf') ? 'document' : 'image'} and extract the following information in JSON format:
-    - storeName: The name of the store or restaurant.
+    - store_or_brand_name: The name of the store or brand as it appears on the receipt. If it's in a non-English script (like Hebrew or Cyrillic), provide it in that script. If not found, return "unknown".
+    - store_name_english: The common English name of the store or brand. For example, if the store is "שופרסל", return "Supersal". If it's "סופר-פארם", return "Superpharm". If it's "מאיר שיווק", return "Meir Shivuk". Use the most common English brand name if available.
+    - transaction_datetime: The date and time on the receipt (string, YYYY-MM-DD HH:mm:ss format). If not found, return null.
+    - price: The total price amount (number). If not found, return 0.
     - items: An array of objects, each with 'name' (string) and 'price' (number).
     - tax: The tax amount (number).
     - tip: The tip amount (number, if present, otherwise 0).
-    - total: The total amount (number).
-    - date: The date on the receipt (string, YYYY-MM-DD format if possible).
-    - time: The time on the receipt (string, HH:mm format if possible).
 
     Return ONLY the JSON object.
   `;
@@ -38,7 +38,10 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          storeName: { type: Type.STRING },
+          store_or_brand_name: { type: Type.STRING },
+          store_name_english: { type: Type.STRING },
+          transaction_datetime: { type: Type.STRING, nullable: true },
+          price: { type: Type.NUMBER },
           items: {
             type: Type.ARRAY,
             items: {
@@ -51,12 +54,9 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
             }
           },
           tax: { type: Type.NUMBER },
-          tip: { type: Type.NUMBER },
-          total: { type: Type.NUMBER },
-          date: { type: Type.STRING },
-          time: { type: Type.STRING }
+          tip: { type: Type.NUMBER }
         },
-        required: ["storeName", "items", "tax", "tip", "total"]
+        required: ["store_or_brand_name", "store_name_english", "price", "items", "tax", "tip"]
       }
     }
   });

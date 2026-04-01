@@ -8,9 +8,16 @@ export interface DriveFile {
   webViewLink?: string;
 }
 
-export const getOrCreateFolder = async (token: string, folderName: string): Promise<string> => {
+export const getOrCreateFolder = async (token: string, folderName: string, parentId?: string): Promise<string> => {
   // Search for the folder
-  const query = encodeURIComponent(`name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+  let queryStr = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  if (parentId) {
+    queryStr += ` and '${parentId}' in parents`;
+  } else {
+    queryStr += ` and 'root' in parents`;
+  }
+  
+  const query = encodeURIComponent(queryStr);
   const response = await fetch(`${DRIVE_API_URL}/files?q=${query}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -23,20 +30,39 @@ export const getOrCreateFolder = async (token: string, folderName: string): Prom
   }
 
   // Create the folder if not found
+  const body: any = {
+    name: folderName,
+    mimeType: 'application/vnd.google-apps.folder',
+  };
+  if (parentId) {
+    body.parents = [parentId];
+  }
+
   const createResponse = await fetch(`${DRIVE_API_URL}/files`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-    }),
+    body: JSON.stringify(body),
   });
 
-  const folder = await createResponse.json();
-  return folder.id;
+  const responseData = await createResponse.json();
+  if (!createResponse.ok) {
+    const errorMessage = responseData.error?.message || 'Failed to create folder';
+    const error: any = new Error(errorMessage);
+    error.status = createResponse.status;
+    throw error;
+  }
+  return responseData.id;
+};
+
+export const getOrCreateFolderPath = async (token: string, path: string[]): Promise<string> => {
+  let currentParentId: string | undefined = undefined;
+  for (const folderName of path) {
+    currentParentId = await getOrCreateFolder(token, folderName, currentParentId);
+  }
+  return currentParentId!;
 };
 
 export const uploadFileToDrive = async (
@@ -87,8 +113,11 @@ export const uploadFileToDrive = async (
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to upload to Drive');
+    const errorData = await response.json();
+    const errorMessage = errorData.error?.message || 'Failed to upload to Drive';
+    const error: any = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
   }
 
   return await response.json();

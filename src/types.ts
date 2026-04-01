@@ -17,6 +17,7 @@ export interface Session {
   id: string;
   userId: string;
   storeName: string;
+  englishStoreName?: string;
   createdAt: string;
   items: ReceiptItem[];
   people: Person[];

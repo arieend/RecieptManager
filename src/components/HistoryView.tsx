@@ -11,10 +11,11 @@ interface HistoryViewProps {
   onClearAll: () => void;
   translations: any;
   language: 'en' | 'he';
+  currencySymbol: string;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ 
-  history, onBack, onSessionClick, onDeleteSession, onClearAll, translations, language 
+  history, onBack, onSessionClick, onDeleteSession, onClearAll, translations, language, currencySymbol 
 }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -65,6 +66,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <div>
                   <h4 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                     {session.storeName || translations[language].unknownStore}
+                    {session.englishStoreName && session.englishStoreName !== session.storeName && (
+                      <span className="text-slate-400 font-medium ml-1 text-[10px]">
+                        ({session.englishStoreName})
+                      </span>
+                    )}
                   </h4>
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                     <Receipt size={12} />
@@ -78,7 +84,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className="text-xl font-black text-slate-900">
-                    {translations[language].currency}{session.total?.toFixed(2)}
+                    {currencySymbol}{session.total?.toFixed(2)}
                   </p>
                   <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
                     {translations[language].completed}

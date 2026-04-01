@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, FileUp, History, Clock, ArrowRight } from 'lucide-react';
+import { Camera, FileUp, History, Clock, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button, Card } from './ui/Base';
 
@@ -12,10 +12,13 @@ interface MainViewProps {
   onSessionClick: (session: any) => void;
   translations: any;
   language: 'en' | 'he';
+  currencySymbol: string;
+  driveToken: string | null;
+  onReconnectDrive: () => void;
 }
 
 export const MainView: React.FC<MainViewProps> = ({ 
-  user, history, onScan, onUpload, onHistoryClick, onSessionClick, translations, language 
+  user, history, onScan, onUpload, onHistoryClick, onSessionClick, translations, language, currencySymbol, driveToken, onReconnectDrive 
 }) => (
   <main className="flex-1 p-6 space-y-8 max-w-2xl mx-auto w-full">
     {/* Welcome Section */}
@@ -25,6 +28,32 @@ export const MainView: React.FC<MainViewProps> = ({
       </h2>
       <p className="text-slate-500 font-medium">{translations[language].readyToSplit}</p>
     </section>
+
+    {/* Drive Warning */}
+    {!driveToken && (
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="p-4 bg-amber-50 border-2 border-amber-100 rounded-3xl flex items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-900">
+              {language === 'he' ? 'Google Drive לא מחובר' : 'Google Drive Disconnected'}
+            </p>
+            <p className="text-[10px] text-amber-600 font-medium">
+              {language === 'he' ? 'חשבוניות לא יישמרו בענן' : 'Receipts won\'t be saved to cloud'}
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onReconnectDrive} className="border-amber-200 text-amber-700 hover:bg-amber-100">
+          {translations[language].reconnectDrive}
+        </Button>
+      </motion.div>
+    )}
 
     {/* Action Buttons */}
     <section className="grid grid-cols-2 gap-4">
@@ -89,6 +118,11 @@ export const MainView: React.FC<MainViewProps> = ({
                 <div>
                   <h4 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                     {session.storeName || translations[language].unknownStore}
+                    {session.englishStoreName && session.englishStoreName !== session.storeName && (
+                      <span className="text-slate-400 font-medium ml-1 text-[10px]">
+                        ({session.englishStoreName})
+                      </span>
+                    )}
                   </h4>
                   <p className="text-xs text-slate-400 font-medium">
                     {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US')}
@@ -97,7 +131,7 @@ export const MainView: React.FC<MainViewProps> = ({
               </div>
               <div className="text-right">
                 <p className="text-lg font-black text-slate-900">
-                  {translations[language].currency}{session.total?.toFixed(2)}
+                  {currencySymbol}{session.total?.toFixed(2)}
                 </p>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   {session.items?.length || 0} {translations[language].items}
