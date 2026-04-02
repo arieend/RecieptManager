@@ -11,7 +11,7 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
     - store_name_english: The common English name of the store or brand. For example, if the store is "שופרסל", return "Supersal". If it's "סופר-פארם", return "Superpharm". If it's "מאיר שיווק", return "Meir Shivuk". Use the most common English brand name if available.
     - transaction_datetime: The date and time on the receipt (string, YYYY-MM-DD HH:mm:ss format). If not found, return null.
     - price: The total price amount (number). If not found, return 0.
-    - items: An array of objects, each with 'name' (string) and 'price' (number).
+    - items: An array of objects, each with 'name' (string), 'price' (number), 'category' (string, e.g., "Food", "Electronics", "Clothing", "Home"), and 'labels' (array of strings, e.g., ["Grocery", "Dairy", "Snack"]).
     - tax: The tax amount (number).
     - tip: The tip amount (number, if present, otherwise 0).
 
@@ -48,9 +48,14 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
               type: Type.OBJECT,
               properties: {
                 name: { type: Type.STRING },
-                price: { type: Type.NUMBER }
+                price: { type: Type.NUMBER },
+                category: { type: Type.STRING },
+                labels: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
               },
-              required: ["name", "price"]
+              required: ["name", "price", "category", "labels"]
             }
           },
           tax: { type: Type.NUMBER },
@@ -117,4 +122,35 @@ export const transcribeStoreName = async (base64Image: string) => {
   });
 
   return response.text?.trim() || "Unknown Store";
+};
+
+export const categorizeItems = async (itemNames: string[]) => {
+  const model = "gemini-3-flash-preview";
+  const prompt = `Categorize these items from a receipt and provide 2-3 relevant labels for each. 
+    Items: ${itemNames.join(', ')}`;
+    
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            category: { type: Type.STRING },
+            labels: { 
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          },
+          required: ["name", "category", "labels"]
+        }
+      }
+    }
+  });
+
+  return JSON.parse(response.text || '[]');
 };

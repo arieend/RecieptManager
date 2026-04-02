@@ -60,14 +60,17 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`bg-white rounded-3xl border border-slate-200 shadow-sm ${onClick ? 'cursor-pointer hover:border-emerald-500 transition-all' : ''} ${className}`}
-  >
-    {children}
-  </div>
-);
+export const Card: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({ children, className = '', onClick }) => {
+  const hasBg = className.includes('bg-');
+  return (
+    <div 
+      onClick={onClick}
+      className={`${!hasBg ? 'bg-white' : ''} rounded-3xl border border-slate-200 shadow-sm ${onClick ? 'cursor-pointer hover:border-emerald-500 transition-all' : ''} ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 export const Badge: React.FC<{ children: React.ReactNode; color?: string; onRemove?: () => void }> = ({ children, color, onRemove }) => (
   <div 

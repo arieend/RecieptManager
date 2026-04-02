@@ -7,6 +7,8 @@ export interface StorageSettings {
     day: boolean;
   };
   autoSave: boolean;
+  syncToSheets: boolean;
+  spreadsheetId: string;
   currency: 'USD' | 'EUR' | 'ILS';
 }
 
@@ -18,6 +20,8 @@ const DEFAULT_SETTINGS: StorageSettings = {
     day: false
   },
   autoSave: true,
+  syncToSheets: true,
+  spreadsheetId: '',
   currency: 'ILS'
 };
 

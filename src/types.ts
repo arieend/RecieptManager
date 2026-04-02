@@ -5,6 +5,8 @@ export interface ReceiptItem {
   name: string;
   price: number;
   assignedTo: string[]; // Array of Person IDs
+  category?: string;
+  labels?: string[];
 }
 
 export interface Person {

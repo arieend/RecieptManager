@@ -97,11 +97,17 @@ export interface Translations {
   month: string;
   day: string;
   autoSave: string;
+  assignHint: string;
   saveSettings: string;
   settingsSaved: string;
   usd: string;
   eur: string;
   ils: string;
+  syncToSheets: string;
+  spreadsheetId: string;
+  spreadsheetIdHelp: string;
+  spreadsheetIdPlaceholder: string;
+  creatingSpreadsheet: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -202,11 +208,26 @@ export const translations: Record<Language, Translations> = {
     month: "Month",
     day: "Day",
     autoSave: "Auto-Save immediately after extraction",
+    assignHint: "Click on a label under an item to assign its cost. If multiple labels are selected, the cost is split equally.",
     saveSettings: "Save Settings",
     settingsSaved: "Settings saved successfully!",
     usd: "USD ($)",
     eur: "EUR (€)",
     ils: "NIS (₪)",
+    syncToSheets: "Sync to Google Sheets",
+    spreadsheetId: "Spreadsheet ID",
+    spreadsheetIdHelp: "The ID of your Google Sheet. You can find it in the URL of your spreadsheet: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
+    spreadsheetIdPlaceholder: "Leave empty to create new",
+    creatingSpreadsheet: "Creating Receipts Database...",
+    categoryBreakdown: "Category Breakdown",
+    assignedProgress: "Assignment Progress",
+    unassignedAmount: "Unassigned Amount",
+    taxTipDetails: "Tax & Tip Details",
+    category: "Category",
+    labels: "Labels",
+    tags: "Tags",
+    regenerateAI: "Regenerate AI Data",
+    regenerating: "Regenerating...",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -305,10 +326,25 @@ export const translations: Record<Language, Translations> = {
     month: "חודש",
     day: "יום",
     autoSave: "שמירה אוטומטית מיד לאחר הניתוח",
+    assignHint: "לחץ על תווית מתחת לפריט כדי לשייך את עלותו. אם נבחרו מספר תוויות, העלות תחולק שווה בשווה.",
     saveSettings: "שמור הגדרות",
     settingsSaved: "ההגדרות נשמרו בהצלחה!",
     usd: "דולר ($)",
     eur: "אירו (€)",
     ils: "שקל (₪)",
+    syncToSheets: "סנכרון ל-Google Sheets",
+    spreadsheetId: "מזהה גיליון (Spreadsheet ID)",
+    spreadsheetIdHelp: "המזהה של גיליון הגוגל שלך. ניתן למצוא אותו בכתובת ה-URL של הגיליון: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
+    spreadsheetIdPlaceholder: "השאר ריק ליצירת חדש",
+    creatingSpreadsheet: "יוצר מאגר נתוני קבלות...",
+    categoryBreakdown: "פירוט לפי קטגוריות",
+    assignedProgress: "התקדמות שיוך",
+    unassignedAmount: "סכום שלא שויך",
+    taxTipDetails: "פירוט מס וטיפ",
+    category: "קטגוריה",
+    labels: "תוויות",
+    tags: "תגיות",
+    regenerateAI: "רענן נתוני בינה מלאכותית",
+    regenerating: "מרענן...",
   }
 };

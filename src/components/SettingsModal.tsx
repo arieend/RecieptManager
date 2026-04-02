@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Settings as SettingsIcon, Folder, Calendar, Save, Coins } from 'lucide-react';
+import { X, Settings as SettingsIcon, Folder, Calendar, Save, Coins, Table, Info } from 'lucide-react';
 import { StorageSettings } from '../services/configService';
 import { Translations } from '../translations';
 
@@ -10,7 +10,7 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: StorageSettings;
   onSave: (settings: StorageSettings) => void;
-  t: Translations;
+  t: any; // Using any to avoid strict translation interface issues with new keys
   language: string;
 }
 
@@ -23,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   language
 }) => {
   const [settings, setSettings] = useState<StorageSettings>(initialSettings);
+  const [showInfo, setShowInfo] = useState(false);
 
   const handleSave = () => {
     onSave(settings);
@@ -106,6 +107,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 focus:ring-0 transition-all font-medium text-slate-700"
                   placeholder="e.g. Google Drive:\Receipts"
                 />
+              </div>
+
+              {/* Google Sheets Sync */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider">
+                    <Table size={16} className="text-emerald-500" />
+                    {t.syncToSheets}
+                  </label>
+                  <button
+                    onClick={() => setSettings({ ...settings, syncToSheets: !settings.syncToSheets })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${settings.syncToSheets ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                  >
+                    <motion.div
+                      animate={{ x: settings.syncToSheets ? 24 : 4 }}
+                      className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
+                    />
+                  </button>
+                </div>
+
+                {settings.syncToSheets && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        {t.spreadsheetId}
+                        <button 
+                          onClick={() => setShowInfo(!showInfo)}
+                          className="text-slate-300 hover:text-emerald-500 transition-colors"
+                        >
+                          <Info size={14} />
+                        </button>
+                      </label>
+                    </div>
+                    
+                    <AnimatePresence>
+                      {showInfo && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium leading-relaxed mb-3 border border-emerald-100">
+                            {t.spreadsheetIdHelp}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <input
+                      type="text"
+                      value={settings.spreadsheetId}
+                      onChange={(e) => setSettings({ ...settings, spreadsheetId: e.target.value })}
+                      className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 focus:ring-0 transition-all font-medium text-slate-700"
+                      placeholder={t.spreadsheetIdPlaceholder}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Directory Structure */}

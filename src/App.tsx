@@ -23,6 +23,7 @@ import {
   getCurrencySymbol
 } from './services/configService';
 import { SettingsModal } from './components/SettingsModal';
+import { createReceiptsSpreadsheet, appendToSpreadsheet } from './services/sheetsService';
 
 // UI Components
 import { Header } from './components/Header';
@@ -187,6 +188,12 @@ export default function App() {
           console.warn("Failed to parse extracted date:", result.transaction_datetime);
         }
       }
+
+      const familyPerson: Person = {
+        id: 'person-family',
+        name: 'משפחה',
+        color: 'hsl(150, 70%, 50%)'
+      };
       
       const newSession: Session = {
         id: Date.now().toString(),
@@ -198,9 +205,11 @@ export default function App() {
           id: `item-${idx}`,
           name: item.name,
           price: item.price,
-          assignedTo: []
+          category: item.category,
+          labels: item.labels,
+          assignedTo: [familyPerson.id]
         })),
-        people: [],
+        people: [familyPerson],
         tax: result.tax || 0,
         tip: result.tip || 0,
         total: result.price || 0,
@@ -328,6 +337,44 @@ export default function App() {
 
       if (driveFileId) sessionData.driveFileId = driveFileId;
       if (driveLink) sessionData.driveLink = driveLink;
+
+      // Sync to Google Sheets if enabled
+      if (settings.syncToSheets && driveToken) {
+        try {
+          let currentSpreadsheetId = settings.spreadsheetId;
+          if (!currentSpreadsheetId) {
+            setShowToast(t.creatingSpreadsheet);
+            currentSpreadsheetId = await createReceiptsSpreadsheet(driveToken);
+            const newSettings = { ...settings, spreadsheetId: currentSpreadsheetId };
+            setSettings(newSettings);
+            saveSettings(newSettings);
+          }
+
+          const rows = session.items.map(item => {
+            const assignedNames = item.assignedTo
+              .map(pid => session.people.find(p => p.id === pid)?.name)
+              .filter(Boolean)
+              .join(', ');
+            
+            return [
+              new Date(session.createdAt).toLocaleDateString(),
+              session.storeName,
+              item.name,
+              item.price,
+              item.category || '',
+              (item.labels || []).join(', '),
+              assignedNames || 'משפחה',
+              driveLink || ''
+            ];
+          });
+
+          await appendToSpreadsheet(driveToken, currentSpreadsheetId, rows);
+          console.log("Synced to Google Sheets");
+        } catch (sheetError) {
+          console.error("Sheets sync error:", sheetError);
+          setShowToast(language === 'he' ? 'שגיאה בסנכרון לגיליון גוגל' : 'Error syncing to Google Sheets');
+        }
+      }
 
       // A session is existing if its ID is not a timestamp (new sessions use Date.now().toString())
       // Firestore IDs are typically 20 characters alphanumeric
