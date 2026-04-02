@@ -11,7 +11,7 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
     - store_name_english: The common English name of the store or brand. For example, if the store is "שופרסל", return "Supersal". If it's "סופר-פארם", return "Superpharm". If it's "מאיר שיווק", return "Meir Shivuk". Use the most common English brand name if available.
     - transaction_datetime: The date and time on the receipt (string, YYYY-MM-DD HH:mm:ss format). If not found, return null.
     - price: The total price amount (number). If not found, return 0.
-    - items: An array of objects, each with 'name' (string), 'price' (number), 'category' (string, e.g., "Food", "Electronics", "Clothing", "Home"), and 'labels' (array of strings, e.g., ["Grocery", "Dairy", "Snack"]).
+    - items: An array of objects, each with 'name' (string), 'unit_price' (number, the price for a single item), 'quantity' (integer, default to 1 if not clear), 'category' (string, e.g., "Food", "Electronics", "Clothing", "Home"), and 'labels' (array of strings, e.g., ["Grocery", "Dairy", "Snack"]).
     - tax: The tax amount (number).
     - tip: The tip amount (number, if present, otherwise 0).
 
@@ -48,14 +48,15 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
               type: Type.OBJECT,
               properties: {
                 name: { type: Type.STRING },
-                price: { type: Type.NUMBER },
+                unit_price: { type: Type.NUMBER },
+                quantity: { type: Type.INTEGER },
                 category: { type: Type.STRING },
                 labels: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING }
                 }
               },
-              required: ["name", "price", "category", "labels"]
+              required: ["name", "unit_price", "quantity", "category", "labels"]
             }
           },
           tax: { type: Type.NUMBER },
@@ -85,7 +86,8 @@ export const interpretChatCommand = async (command: string, items: any[], people
       "personId": "string (if assign)",
       "personName": "string (if add_person)",
       "itemName": "string (if add_item)",
-      "itemPrice": number (if add_item)
+      "itemPrice": number (if add_item),
+      "itemQuantity": number (if add_item, default to 1)
     }
   `;
 

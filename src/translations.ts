@@ -108,6 +108,28 @@ export interface Translations {
   spreadsheetIdHelp: string;
   spreadsheetIdPlaceholder: string;
   creatingSpreadsheet: string;
+  categoryBreakdown: string;
+  assignedProgress: string;
+  unassignedAmount: string;
+  taxTipDetails: string;
+  category: string;
+  labels: string;
+  tags: string;
+  regenerateAI: string;
+  regenerating: string;
+  personName: string;
+  openInDrive: string;
+  viewOnDrive: string;
+  cropTitle: string;
+  smartCrop: string;
+  manualCrop: string;
+  addPart: string;
+  finishScan: string;
+  stitching: string;
+  longReceiptMode: string;
+  singleReceiptMode: string;
+  sheetsApiDisabled: string;
+  quantity: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -228,6 +250,19 @@ export const translations: Record<Language, Translations> = {
     tags: "Tags",
     regenerateAI: "Regenerate AI Data",
     regenerating: "Regenerating...",
+    personName: "Label name:",
+    openInDrive: "Open in Google Drive",
+    viewOnDrive: "View on Google Drive",
+    cropTitle: "Crop Receipt",
+    smartCrop: "Smart Crop",
+    manualCrop: "Manual Crop",
+    addPart: "Add Next Part",
+    finishScan: "Finish & Stitch",
+    stitching: "Stitching parts...",
+    longReceiptMode: "Long Receipt Mode",
+    singleReceiptMode: "Single Page Mode",
+    sheetsApiDisabled: "Google Sheets API is disabled. Please enable it in your Google Cloud Console to use this feature.",
+    quantity: "Qty",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -346,5 +381,18 @@ export const translations: Record<Language, Translations> = {
     tags: "תגיות",
     regenerateAI: "רענן נתוני בינה מלאכותית",
     regenerating: "מרענן...",
+    personName: "שם תווית:",
+    openInDrive: "פתח ב-Google Drive",
+    viewOnDrive: "צפה ב-Google Drive",
+    cropTitle: "חיתוך קבלה",
+    smartCrop: "חיתוך חכם",
+    manualCrop: "חיתוך ידני",
+    addPart: "הוסף חלק הבא",
+    finishScan: "סיום וחיבור",
+    stitching: "מחבר חלקים...",
+    longReceiptMode: "מצב קבלה ארוכה",
+    singleReceiptMode: "מצב דף בודד",
+    sheetsApiDisabled: "Google Sheets API כבוי. אנא הפעל אותו בקונסולת Google Cloud כדי להשתמש בתכונה זו.",
+    quantity: "כמות",
   }
 };

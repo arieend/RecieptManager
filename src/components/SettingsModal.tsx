@@ -149,8 +149,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium leading-relaxed mb-3 border border-emerald-100">
-                            {t.spreadsheetIdHelp}
+                          <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium leading-relaxed mb-3 border border-emerald-100 space-y-2">
+                            <p>{t.spreadsheetIdHelp}</p>
+                            <p className="font-black text-emerald-800">
+                              {language === 'he' ? 'חשוב: וודא ש-Google Sheets API מופעל בחשבון הגוגל שלך.' : 'Important: Ensure Google Sheets API is enabled in your Google Cloud Console.'}
+                            </p>
+                            <a 
+                              href="https://console.developers.google.com/apis/api/sheets.googleapis.com/overview" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-emerald-600 underline hover:text-emerald-800 transition-colors"
+                            >
+                              {language === 'he' ? 'לחץ כאן להפעלה' : 'Click here to enable'}
+                            </a>
                           </div>
                         </motion.div>
                       )}

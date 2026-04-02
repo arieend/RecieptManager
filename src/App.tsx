@@ -14,16 +14,14 @@ import { translations, Language } from './translations';
 import { ReceiptItem, Person, Session } from './types';
 import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand } from './services/geminiService';
-import { resizeImage } from './utils/imageUtils';
+import { resizeImage, compressImage } from './utils/imageUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { getOrCreateFolderPath, uploadFileToDrive } from './services/driveService';
+import { syncToCloud } from './services/syncService';
 import { 
-  getSettings, saveSettings, sanitizeFilename, 
-  formatDateTimeForFilename, buildDirectoryPath, StorageSettings,
+  getSettings, saveSettings, StorageSettings,
   getCurrencySymbol
 } from './services/configService';
 import { SettingsModal } from './components/SettingsModal';
-import { createReceiptsSpreadsheet, appendToSpreadsheet } from './services/sheetsService';
 
 // UI Components
 import { Header } from './components/Header';
@@ -125,6 +123,8 @@ export default function App() {
         setDriveToken(token);
         localStorage.setItem('drive_token', token);
         localStorage.setItem('drive_token_timestamp', Date.now().toString());
+      } else {
+        console.warn("No access token returned from Google login.");
       }
 
       await setDoc(doc(db, 'users', user.uid), {
@@ -204,15 +204,16 @@ export default function App() {
         items: (result.items || []).map((item: any, idx: number) => ({
           id: `item-${idx}`,
           name: item.name,
-          price: item.price,
+          price: Number(item.unit_price || item.price || 0) || 0,
+          quantity: Number(item.quantity || 1) || 1,
           category: item.category,
           labels: item.labels,
           assignedTo: [familyPerson.id]
         })),
         people: [familyPerson],
-        tax: result.tax || 0,
-        tip: result.tip || 0,
-        total: result.price || 0,
+        tax: Number(result.tax || 0) || 0,
+        tip: Number(result.tip || 0) || 0,
+        total: Number(result.price || 0) || 0,
         imageUrl: base64
       };
 
@@ -242,163 +243,72 @@ export default function App() {
   };
 
   const saveSession = async (sessionToUse?: Session, forceExtension?: string) => {
-    // Safeguard against React event objects being passed as first argument
-    const actualSession = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : null;
-    const session = actualSession || currentSession;
+    const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
     if (!session || !user) return;
+    
     setIsSaving(true);
     try {
       let imageUrl = session.imageUrl;
       let driveFileId = session.driveFileId;
       let driveLink = session.driveLink;
+      let driveFileName = session.driveFileName;
 
-      // Upload to Google Drive if token is available and not already uploaded
-      if (driveToken && imageUrl && !driveFileId) {
+      // 1. Sync to Cloud (Drive & Sheets)
+      if (driveToken && (imageUrl && !driveFileId || settings.syncToSheets)) {
         try {
-          const date = new Date(session.createdAt);
-          const folderPath = buildDirectoryPath(settings, date);
-          const folderId = await getOrCreateFolderPath(driveToken, folderPath);
+          const syncResult = await syncToCloud(session, settings, driveToken, forceExtension);
           
-          const mimeType = imageUrl.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg';
-          const extension = forceExtension || (mimeType === 'application/pdf' ? 'pdf' : 'jpg');
+          if (syncResult.driveFileId) driveFileId = syncResult.driveFileId;
+          if (syncResult.driveLink) driveLink = syncResult.driveLink;
+          if (syncResult.driveFileName) driveFileName = syncResult.driveFileName;
           
-          const formattedDate = formatDateTimeForFilename(date);
-          const storeNameForFilename = session.englishStoreName || session.storeName || 'unknown';
-          const sanitizedStoreName = sanitizeFilename(storeNameForFilename);
-          const fileName = `${sanitizedStoreName}_${formattedDate}_${session.total.toFixed(2)}.${extension}`;
-          
-          const driveFile = await uploadFileToDrive(driveToken, folderId, fileName, imageUrl, mimeType);
-          driveFileId = driveFile.id;
-          driveLink = driveFile.webViewLink;
-          console.log("Uploaded to Drive:", driveFile);
-        } catch (driveError: any) {
-          console.error("Drive upload error:", driveError);
-          const errorMessage = driveError.message?.toLowerCase() || '';
-          const isAuthError = 
-            driveError.status === 401 || 
-            errorMessage.includes('invalid_grant') || 
-            errorMessage.includes('401') || 
-            errorMessage.includes('invalid authentication credentials') ||
-            errorMessage.includes('unauthenticated');
-
-          if (isAuthError) {
-            setShowToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש בפרופיל.' : 'Google Drive session expired. Please reconnect in Profile.');
-            setDriveToken(null);
-            localStorage.removeItem('drive_token');
-            localStorage.removeItem('drive_token_timestamp');
-          } else {
-            setShowToast(language === 'he' ? 'שגיאה בשמירה ב-Google Drive' : 'Error saving to Google Drive');
-          }
-        }
-      }
-      
-      // Firestore document limit handling
-      if (imageUrl && imageUrl.length > 800000) {
-        if (imageUrl.startsWith('data:image/')) {
-          try {
-            const img = new Image();
-            img.src = imageUrl;
-            await new Promise(resolve => img.onload = resolve);
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-              canvas.width = img.width * scale;
-              canvas.height = img.height * scale;
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              imageUrl = canvas.toDataURL('image/jpeg', 0.4);
-            }
-          } catch (e) {
-            console.error("Compression error:", e);
-          }
-        }
-        if (imageUrl && imageUrl.length > 950000) {
-          if (driveLink) {
-            imageUrl = "";
-          }
-        }
-      }
-
-      // Clean session object of non-serializable data (like PointerEvent)
-      const cleanSession = { ...session };
-      Object.keys(cleanSession).forEach(key => {
-        const val = cleanSession[key as keyof typeof cleanSession];
-        if (val instanceof Event || (val && typeof val === 'object' && 'nativeEvent' in val)) {
-          delete (cleanSession as any)[key];
-        }
-      });
-
-      const sessionData: any = {
-        ...cleanSession,
-        userId: user.uid,
-        imageUrl: imageUrl || "",
-        updatedAt: new Date().toISOString()
-      };
-
-      if (driveFileId) sessionData.driveFileId = driveFileId;
-      if (driveLink) sessionData.driveLink = driveLink;
-
-      // Sync to Google Sheets if enabled
-      if (settings.syncToSheets && driveToken) {
-        try {
-          let currentSpreadsheetId = settings.spreadsheetId;
-          if (!currentSpreadsheetId) {
-            setShowToast(t.creatingSpreadsheet);
-            currentSpreadsheetId = await createReceiptsSpreadsheet(driveToken);
-            const newSettings = { ...settings, spreadsheetId: currentSpreadsheetId };
+          if (syncResult.spreadsheetId) {
+            const newSettings = { ...settings, spreadsheetId: syncResult.spreadsheetId };
             setSettings(newSettings);
             saveSettings(newSettings);
           }
+        } catch (syncError: any) {
+          console.error("Cloud sync error:", syncError);
+          const errorMessage = syncError.message?.toLowerCase() || '';
+          const isAuthError = syncError.status === 401 || errorMessage.includes('invalid_grant') || errorMessage.includes('401');
 
-          const rows = session.items.map(item => {
-            const assignedNames = item.assignedTo
-              .map(pid => session.people.find(p => p.id === pid)?.name)
-              .filter(Boolean)
-              .join(', ');
-            
-            return [
-              new Date(session.createdAt).toLocaleDateString(),
-              session.storeName,
-              item.name,
-              item.price,
-              item.category || '',
-              (item.labels || []).join(', '),
-              assignedNames || 'משפחה',
-              driveLink || ''
-            ];
-          });
-
-          await appendToSpreadsheet(driveToken, currentSpreadsheetId, rows);
-          console.log("Synced to Google Sheets");
-        } catch (sheetError) {
-          console.error("Sheets sync error:", sheetError);
-          setShowToast(language === 'he' ? 'שגיאה בסנכרון לגיליון גוגל' : 'Error syncing to Google Sheets');
+          if (isAuthError) {
+            setShowToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.');
+            setDriveToken(null);
+            localStorage.removeItem('drive_token');
+          } else if (errorMessage.includes('sheets.googleapis.com') || errorMessage.includes('sheets api')) {
+            setShowToast(t.sheetsApiDisabled);
+          } else {
+            setShowToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud');
+          }
         }
       }
-
-      // A session is existing if its ID is not a timestamp (new sessions use Date.now().toString())
-      // Firestore IDs are typically 20 characters alphanumeric
-      const isExisting = session.id && session.id.length > 15;
-      console.log(`Saving session. Existing: ${isExisting}, ID: ${session.id}`);
       
+      // 2. Compress image if needed for Firestore
+      if (imageUrl && imageUrl.length > 800000) {
+        imageUrl = await compressImage(imageUrl, 800000);
+        if (imageUrl.length > 950000 && driveLink) imageUrl = "";
+      }
+
+      // 3. Prepare and save to Firestore
+      const sessionData: any = {
+        ...session,
+        userId: user.uid,
+        imageUrl: imageUrl || "",
+        driveFileId: driveFileId || "",
+        driveLink: driveLink || "",
+        driveFileName: driveFileName || "",
+        updatedAt: new Date().toISOString()
+      };
+      delete sessionData.id;
+
+      const isExisting = session.id && session.id.length > 15;
       if (isExisting) {
-        const docId = session.id;
-        const dataToUpdate = { ...sessionData };
-        delete dataToUpdate.id;
-        console.log("Updating document:", docId, dataToUpdate);
-        await setDoc(doc(db, 'sessions', docId), dataToUpdate, { merge: true });
+        await setDoc(doc(db, 'sessions', session.id), sessionData, { merge: true });
       } else {
-        const dataToSave = { ...sessionData };
-        delete dataToSave.id;
-        console.log("Adding new document:", dataToSave);
-        const docRef = await addDoc(collection(db, 'sessions'), dataToSave);
-        console.log("Document added with ID:", docRef.id);
-        if (!sessionToUse) {
-          setCurrentSession({ ...session, id: docRef.id });
-        } else {
-          // If it was an auto-save, we should still update the current session if it matches
-          setCurrentSession(prev => prev?.id === session.id ? { ...session, id: docRef.id } : prev);
-        }
+        const docRef = await addDoc(collection(db, 'sessions'), sessionData);
+        if (!sessionToUse) setCurrentSession({ ...session, id: docRef.id });
+        else setCurrentSession(prev => prev?.id === session.id ? { ...session, id: docRef.id } : prev);
       }
 
       setShowToast(t.sessionSaved);
@@ -477,7 +387,8 @@ export default function App() {
         const newItem: ReceiptItem = {
           id: `item-${Date.now()}`,
           name: result.itemName,
-          price: result.itemPrice,
+          price: Number(result.itemPrice || 0) || 0,
+          quantity: Number(result.itemQuantity || 1) || 1,
           assignedTo: []
         };
         setCurrentSession({

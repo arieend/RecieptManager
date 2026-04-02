@@ -7,6 +7,7 @@ export interface ReceiptItem {
   assignedTo: string[]; // Array of Person IDs
   category?: string;
   labels?: string[];
+  quantity: number;
 }
 
 export interface Person {
@@ -29,6 +30,7 @@ export interface Session {
   imageUrl?: string;
   driveFileId?: string;
   driveLink?: string;
+  driveFileName?: string;
 }
 
 export interface UserProfile {
