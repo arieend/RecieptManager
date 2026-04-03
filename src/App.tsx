@@ -43,6 +43,7 @@ export default function App() {
   const [showToast, setShowToast] = useState<string | null>(null);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [driveToken, setDriveToken] = useState<string | null>(() => {
     const token = localStorage.getItem('drive_token');
     const timestamp = localStorage.getItem('drive_token_timestamp');
@@ -113,9 +114,18 @@ export default function App() {
         setHistory([]);
       }
     });
+
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -463,6 +473,16 @@ export default function App() {
             <div className="text-sm">
               <span className="font-bold">{t.quotaExceeded}: </span>
               {t.quotaExceededDesc}
+            </div>
+          </div>
+        )}
+
+        {isOffline && (
+          <div className="bg-slate-900 text-white p-4 flex items-center gap-3">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <div className="text-sm">
+              <span className="font-bold">{t.offlineMode}: </span>
+              {t.offlineDesc}
             </div>
           </div>
         )}

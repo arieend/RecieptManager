@@ -132,6 +132,8 @@ export interface Translations {
   quantity: string;
   quotaExceeded: string;
   quotaExceededDesc: string;
+  offlineMode: string;
+  offlineDesc: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -267,6 +269,8 @@ export const translations: Record<Language, Translations> = {
     quantity: "Qty",
     quotaExceeded: "Daily Limit Reached",
     quotaExceededDesc: "You've reached the daily free limit for database reads. History updates are paused until tomorrow.",
+    offlineMode: "Offline Mode",
+    offlineDesc: "You are currently offline. You can view your history, but scanning and syncing are disabled.",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -400,5 +404,7 @@ export const translations: Record<Language, Translations> = {
     quantity: "כמות",
     quotaExceeded: "הגעת למכסה היומית",
     quotaExceededDesc: "הגעת למגבלת הקריאות היומית בחינם. עדכוני ההיסטוריה מושהים עד מחר.",
+    offlineMode: "מצב לא מקוון",
+    offlineDesc: "אתה כרגע לא מחובר לאינטרנט. ניתן לצפות בהיסטוריה, אך סריקה וסנכרון מושבתים.",
   }
 };
