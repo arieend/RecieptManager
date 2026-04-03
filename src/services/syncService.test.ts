@@ -60,8 +60,14 @@ describe('syncService', () => {
       'sheet-123',
       expect.arrayContaining([
         expect.arrayContaining([
-          expect.stringContaining('HYPERLINK'),
-          expect.stringContaining('Test_Store_20240101_10.00.jpg')
+          expect.stringMatching(/^\d{2}\/\d{2}\/\d{4}$/),
+          'Test Store',
+          'Item 1',
+          10,
+          'Food',
+          'Tag1',
+          'Person 1',
+          expect.stringContaining('HYPERLINK')
         ])
       ])
     );

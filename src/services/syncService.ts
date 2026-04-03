@@ -1,5 +1,5 @@
 import { Session, Person, ReceiptItem } from '../types';
-import { StorageSettings, buildDirectoryPath, formatDateTimeForFilename, sanitizeFilename } from './configService';
+import { StorageSettings, buildDirectoryPath, formatDateTimeForFilename, sanitizeFilename, formatDateForSheets } from './configService';
 import { getOrCreateFolderPath, uploadFileToDrive } from './driveService';
 import { createReceiptsSpreadsheet, appendToSpreadsheet } from './sheetsService';
 
@@ -63,7 +63,7 @@ export const syncToCloud = async (
         const receiptLink = driveLink ? `=HYPERLINK("${driveLink}", "${driveFileName}")` : '';
         
         return [
-          new Date(session.createdAt).toLocaleDateString(),
+          formatDateForSheets(new Date(session.createdAt)),
           session.storeName,
           item.name,
           item.price,

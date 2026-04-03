@@ -81,6 +81,11 @@ export const formatDateTimeForFilename = (date: Date): string => {
   return `${d}_${t}`;
 };
 
+export const formatDateForSheets = (date: Date): string => {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+};
+
 export const buildDirectoryPath = (settings: StorageSettings, date: Date): string[] => {
   // Split the storage path by backslash or forward slash
   const pathParts = settings.storagePath.split(/[\\/]/).filter(p => p.trim() !== '' && p !== 'Google Drive:');
