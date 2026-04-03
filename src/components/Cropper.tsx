@@ -125,11 +125,11 @@ export const Cropper: React.FC<CropperProps> = ({ image, onCrop, onCancel, langu
   return (
     <div className="fixed inset-0 z-[110] bg-black flex flex-col">
       <div className="p-4 flex justify-between items-center bg-slate-900 text-white">
-        <button onClick={onCancel} className="p-2"><X size={24} /></button>
+        <button onClick={onCancel} className="p-2" aria-label="Close"><X size={24} /></button>
         <h2 className="font-bold">{t.cropTitle}</h2>
         <div className="flex gap-2">
-          <button onClick={resetPoints} className="p-2" title="Reset"><RotateCcw size={20} /></button>
-          <button onClick={autoDetect} className="p-2" title="Auto Detect"><Maximize size={20} /></button>
+          <button onClick={resetPoints} className="p-2" title="Reset" aria-label="Reset"><RotateCcw size={20} /></button>
+          <button onClick={autoDetect} className="p-2" title="Auto Detect" aria-label="Auto Detect"><Maximize size={20} /></button>
         </div>
       </div>
 

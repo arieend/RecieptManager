@@ -1,6 +1,6 @@
 
-const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3';
-const UPLOAD_API_URL = 'https://www.googleapis.com/upload/drive/v3';
+export const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3';
+export const UPLOAD_API_URL = 'https://www.googleapis.com/upload/drive/v3';
 
 export interface DriveFile {
   id: string;

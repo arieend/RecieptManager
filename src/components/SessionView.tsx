@@ -177,7 +177,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
       {/* Header */}
       <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
             <ArrowLeft size={24} />
           </Button>
           <div>
@@ -202,18 +202,19 @@ export const SessionView: React.FC<SessionViewProps> = ({
             isLoading={isRegenerating}
             className="text-emerald-600"
             title={translations[language].regenerateAI}
+            aria-label="Regenerate"
           >
             <RefreshCw size={20} />
           </Button>
           {(session.imageUrl || session.driveLink) && (
-            <Button variant="ghost" size="icon" onClick={() => setIsImageModalOpen(true)} className="text-emerald-600">
+            <Button variant="ghost" size="icon" onClick={() => setIsImageModalOpen(true)} className="text-emerald-600" aria-label="View Image">
               <Eye size={20} />
             </Button>
           )}
-          <Button variant="danger" size="icon" onClick={onDelete}>
+          <Button variant="danger" size="icon" onClick={onDelete} aria-label="Delete">
             <Trash2 size={20} />
           </Button>
-          <Button variant="primary" size="icon" onClick={onSave}>
+          <Button variant="primary" size="icon" onClick={onSave} aria-label="Save">
             <Save size={20} />
           </Button>
         </div>
@@ -319,6 +320,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   size="icon" 
                   onClick={() => { onChat(chatInput); setChatInput(''); }}
                   disabled={!chatInput.trim()}
+                  aria-label="Send"
                 >
                   <Send size={18} />
                 </Button>
@@ -329,6 +331,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
         <button 
           onClick={() => setIsChatOpen(!isChatOpen)}
           className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-90 ${isChatOpen ? 'bg-slate-800 text-white' : 'bg-emerald-600 text-white shadow-emerald-200'}`}
+          aria-label="Chat"
         >
           {isChatOpen ? <X size={24} /> : <MessageSquare size={24} />}
         </button>

@@ -5,7 +5,7 @@ import { Camera, Sparkles } from 'lucide-react';
 
 import { 
   auth, db, googleProvider, signInWithPopup, signOut, 
-  collection, addDoc, query, where, onSnapshot, orderBy, 
+  collection, addDoc, query, where, onSnapshot, orderBy, limit,
   deleteDoc, doc, setDoc, handleFirestoreError, OperationType,
   GoogleAuthProvider
 } from './firebase';
@@ -42,6 +42,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [driveToken, setDriveToken] = useState<string | null>(() => {
     const token = localStorage.getItem('drive_token');
     const timestamp = localStorage.getItem('drive_token_timestamp');
@@ -89,13 +90,20 @@ export default function App() {
         const q = query(
           collection(db, 'sessions'),
           where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
+          orderBy('createdAt', 'desc'),
+          limit(50)
         );
         unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
           const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
           setHistory(sessions);
+          setIsQuotaExceeded(false);
         }, (error) => {
-          handleFirestoreError(error, OperationType.LIST, 'sessions');
+          if (error instanceof Error && error.message.includes('Quota limit exceeded')) {
+            setIsQuotaExceeded(true);
+            console.warn("Firestore quota exceeded. Real-time updates paused.");
+          } else {
+            handleFirestoreError(error, OperationType.LIST, 'sessions');
+          }
         });
       } else {
         if (unsubscribeSnapshot) {
@@ -448,6 +456,16 @@ export default function App() {
           onLogout={handleLogout}
           translations={translations}
         />
+
+        {isQuotaExceeded && (
+          <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-center gap-3 text-amber-800">
+            <Sparkles size={20} className="text-amber-500 flex-shrink-0" />
+            <div className="text-sm">
+              <span className="font-bold">{t.quotaExceeded}: </span>
+              {t.quotaExceededDesc}
+            </div>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {view === 'main' && (

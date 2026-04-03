@@ -130,6 +130,8 @@ export interface Translations {
   singleReceiptMode: string;
   sheetsApiDisabled: string;
   quantity: string;
+  quotaExceeded: string;
+  quotaExceededDesc: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -263,6 +265,8 @@ export const translations: Record<Language, Translations> = {
     singleReceiptMode: "Single Page Mode",
     sheetsApiDisabled: "Google Sheets API is disabled. Please enable it in your Google Cloud Console to use this feature.",
     quantity: "Qty",
+    quotaExceeded: "Daily Limit Reached",
+    quotaExceededDesc: "You've reached the daily free limit for database reads. History updates are paused until tomorrow.",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -394,5 +398,7 @@ export const translations: Record<Language, Translations> = {
     singleReceiptMode: "מצב דף בודד",
     sheetsApiDisabled: "Google Sheets API כבוי. אנא הפעל אותו בקונסולת Google Cloud כדי להשתמש בתכונה זו.",
     quantity: "כמות",
+    quotaExceeded: "הגעת למכסה היומית",
+    quotaExceededDesc: "הגעת למגבלת הקריאות היומית בחינם. עדכוני ההיסטוריה מושהים עד מחר.",
   }
 };

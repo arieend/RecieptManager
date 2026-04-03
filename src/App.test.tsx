@@ -9,14 +9,26 @@ vi.mock('firebase/app', () => ({
 
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => ({
-    currentUser: null,
+    currentUser: {
+      uid: 'test-uid',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      photoURL: 'http://photo.com'
+    },
   })),
   onAuthStateChanged: vi.fn((auth, cb) => {
-    cb(null);
+    cb({
+      uid: 'test-uid',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      photoURL: 'http://photo.com'
+    });
     return vi.fn();
   }),
   GoogleAuthProvider: class {
+    static credentialFromResult = vi.fn(() => ({ accessToken: 'mock-token' }));
     addScope = vi.fn();
+    setCustomParameters = vi.fn();
   },
   signInWithPopup: vi.fn(),
   signOut: vi.fn(),
@@ -28,35 +40,60 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(),
   where: vi.fn(),
   orderBy: vi.fn(),
-  onSnapshot: vi.fn(() => vi.fn()),
+  limit: vi.fn(),
+  onSnapshot: vi.fn((q, cb) => {
+    cb({ docs: [] });
+    return vi.fn();
+  }),
   doc: vi.fn(),
   getDocFromServer: vi.fn(),
+  setDoc: vi.fn(),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'new-doc-id' })),
 }));
 
 // Mock Gemini SDK
-vi.mock('@google/genai', () => ({
-  GoogleGenAI: class {
-    models = {
-      generateContent: vi.fn(),
-    };
-  },
-  Type: {
-    OBJECT: 'OBJECT',
-    ARRAY: 'ARRAY',
-    STRING: 'STRING',
-    NUMBER: 'NUMBER',
-  },
-}));
+vi.mock('@google/genai', () => {
+  return {
+    GoogleGenAI: class {
+      models = {
+        generateContent: vi.fn().mockResolvedValue({
+          text: JSON.stringify({
+            store_or_brand_name: 'Mock Store',
+            store_name_english: 'Mock Store',
+            price: 100,
+            items: [],
+            tax: 10,
+            tip: 5
+          })
+        })
+      };
+    },
+    Type: {
+      OBJECT: 'OBJECT',
+      ARRAY: 'ARRAY',
+      STRING: 'STRING',
+      NUMBER: 'NUMBER',
+      INTEGER: 'INTEGER'
+    }
+  };
+});
 
-// Mock framer-motion to avoid animation issues in tests
-vi.mock('motion/react', () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    section: ({ children, ...props }: any) => <section {...props}>{children}</section>,
-    button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+// Mock motion to avoid animation issues
+vi.mock('motion/react', () => {
+  const React = require('react');
+  const motion = (Component: any) => Component;
+  const tags = ['div', 'main', 'span', 'button', 'section', 'h1', 'h2', 'h3', 'p', 'img', 'video', 'canvas', 'svg', 'path', 'line'];
+  tags.forEach(tag => {
+    (motion as any)[tag] = React.forwardRef(({ children, ...props }: any, ref: any) => {
+      const { initial, animate, exit, transition, ...rest } = props;
+      return React.createElement(tag, { ...rest, ref }, children);
+    });
+  });
+  return {
+    motion,
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+  };
+});
 
 // Mock utils and services
 vi.mock('./utils/imageUtils', () => ({
@@ -67,11 +104,12 @@ vi.mock('./services/geminiService', () => ({
   parseReceiptImage: vi.fn(() => new Promise(resolve => {
     setTimeout(() => {
       resolve({
-        storeName: 'Mock Store',
+        store_or_brand_name: 'Mock Store',
+        store_name_english: 'Mock Store',
         items: [],
         tax: 0,
         tip: 0,
-        total: 0,
+        price: 0,
       });
     }, 100);
   })),
@@ -95,8 +133,8 @@ describe('App Camera Functionality', () => {
 
     render(<App />);
     
-    // Find the "Take Photo" button
-    const takePhotoBtn = screen.getByText(/Take Photo|צלם קבלה/i);
+    // Find the "Scan Receipt" or "Take Photo" button
+    const takePhotoBtn = await screen.findByText(/Scan Receipt|Start Scanning|Take Photo|סרוק קבלה|צלם קבלה/i);
     expect(takePhotoBtn).toBeInTheDocument();
     
     // Click the button
@@ -109,6 +147,9 @@ describe('App Camera Functionality', () => {
   });
 
   it('starts parsing when a file is selected via the file input', async () => {
+    // Mock URL.createObjectURL
+    global.URL.createObjectURL = vi.fn(() => 'blob:mock');
+
     render(<App />);
     
     // Find the hidden file input
@@ -124,10 +165,11 @@ describe('App Camera Functionality', () => {
     // Wait for parsing state
     await waitFor(() => {
       expect(screen.getByText(/Parsing Receipt|מנתח קבלה/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     // Wait for the summary view to appear (mocked Gemini response)
-    const summaryHeader = await screen.findByText(/Receipt Items|פריטי קבלה/i, {}, { timeout: 5000 });
+    // The store name should be "Mock Store"
+    const summaryHeader = await screen.findByText(/Mock Store/i, {}, { timeout: 5000 });
     expect(summaryHeader).toBeInTheDocument();
   });
 });

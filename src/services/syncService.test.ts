@@ -1,0 +1,90 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { syncToCloud } from './syncService';
+import { Session } from '../types';
+import { StorageSettings } from './configService';
+import * as driveService from './driveService';
+import * as sheetsService from './sheetsService';
+
+vi.mock('./driveService');
+vi.mock('./sheetsService');
+
+describe('syncService', () => {
+  const mockToken = 'mock-token';
+  const mockSettings: StorageSettings = {
+    storagePath: 'Receipts',
+    directories: { year: true, month: true, day: false },
+    autoSave: true,
+    syncToSheets: true,
+    spreadsheetId: 'sheet-123',
+    currency: 'ILS'
+  };
+
+  const mockSession: Session = {
+    id: '1',
+    userId: 'user1',
+    storeName: 'Test Store',
+    items: [
+      { id: 'i1', name: 'Item 1', price: 10, quantity: 1, assignedTo: ['p1'], category: 'Food', labels: ['Tag1'] },
+    ],
+    people: [{ id: 'p1', name: 'Person 1', color: '#ff0000' }],
+    tax: 0,
+    tip: 0,
+    total: 10,
+    createdAt: new Date().toISOString(),
+    imageUrl: 'data:image/jpeg;base64,mock',
+    driveFileId: '',
+    driveLink: '',
+    driveFileName: '',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('syncs to Drive and Sheets correctly', async () => {
+    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
+    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
+      id: 'file-123',
+      name: 'Test_Store_20240101_10.00.jpg',
+      webViewLink: 'http://link'
+    });
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+
+    const result = await syncToCloud(mockSession, mockSettings, mockToken);
+
+    expect(result.driveFileId).toBe('file-123');
+    expect(result.driveLink).toBe('http://link');
+    expect(driveService.uploadFileToDrive).toHaveBeenCalled();
+    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalledWith(
+      mockToken,
+      'sheet-123',
+      expect.arrayContaining([
+        expect.arrayContaining([
+          expect.stringContaining('HYPERLINK'),
+          expect.stringContaining('Test_Store_20240101_10.00.jpg')
+        ])
+      ])
+    );
+  });
+
+  it('creates a new spreadsheet if ID is missing', async () => {
+    const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
+    vi.mocked(sheetsService.createReceiptsSpreadsheet).mockResolvedValue('new-sheet-456');
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+
+    const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
+
+    expect(result.spreadsheetId).toBe('new-sheet-456');
+    expect(sheetsService.createReceiptsSpreadsheet).toHaveBeenCalledWith(mockToken);
+  });
+
+  it('skips Drive upload if already uploaded', async () => {
+    const sessionWithDrive = { ...mockSession, driveFileId: 'existing-id' };
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+
+    await syncToCloud(sessionWithDrive, mockSettings, mockToken);
+
+    expect(driveService.uploadFileToDrive).not.toHaveBeenCalled();
+    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalled();
+  });
+});

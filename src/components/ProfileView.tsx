@@ -18,7 +18,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   <main className="flex-1 flex flex-col bg-slate-50">
     {/* Header */}
     <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 sticky top-0 z-30">
-      <Button variant="ghost" size="icon" onClick={onBack}>
+      <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
         <ArrowLeft size={20} />
       </Button>
       <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">

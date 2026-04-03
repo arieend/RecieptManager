@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, getDocFromServer, deleteDoc, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, limit, getDocFromServer, deleteDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 export enum OperationType {
@@ -77,6 +77,6 @@ testConnection();
 
 export { 
   collection, doc, setDoc, getDoc, addDoc, query, where, 
-  onSnapshot, orderBy, signInWithPopup, signOut, deleteDoc, 
+  onSnapshot, orderBy, limit, signInWithPopup, signOut, deleteDoc, 
   getDocs, GoogleAuthProvider 
 };

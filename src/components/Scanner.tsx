@@ -166,6 +166,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
           <button 
             onClick={onClose}
             className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            aria-label="Close"
           >
             <X size={24} />
           </button>
@@ -174,6 +175,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
               onClick={() => setIsLongReceiptMode(!isLongReceiptMode)}
               className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 ${isLongReceiptMode ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
               title={isLongReceiptMode ? t.longReceiptMode : t.singleReceiptMode}
+              aria-label={isLongReceiptMode ? "Long Receipt Mode" : "Single Receipt Mode"}
             >
               {isLongReceiptMode ? <Layers size={20} /> : <FileText size={20} />}
               <span className="text-xs font-bold hidden sm:inline">
@@ -183,6 +185,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
             <button 
               onClick={toggleCamera}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              aria-label="Toggle Camera"
             >
               <RefreshCw size={24} />
             </button>
@@ -282,6 +285,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
             onClick={capture}
             disabled={!isCameraReady || isStitching}
             className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-white/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            aria-label="Capture"
           >
             <div className="w-16 h-16 bg-white rounded-full border-2 border-black/10" />
           </button>
