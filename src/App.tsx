@@ -44,6 +44,7 @@ export default function App() {
   const [isProcessingChat, setIsProcessingChat] = useState(false);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [driveToken, setDriveToken] = useState<string | null>(() => {
     const token = localStorage.getItem('drive_token');
     const timestamp = localStorage.getItem('drive_token_timestamp');
@@ -117,15 +118,21 @@ export default function App() {
 
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
+    const handleInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
 
     return () => {
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
     };
   }, []);
 
@@ -167,6 +174,7 @@ export default function App() {
   };
 
   const processReceipt = async (file: File | string) => {
+    console.log("Processing receipt...", typeof file === 'string' ? "base64" : file.name);
     setIsParsing(true);
     try {
       let base64: string;
@@ -554,6 +562,17 @@ export default function App() {
                 driveToken={driveToken}
                 translations={translations}
                 language={language}
+                deferredPrompt={deferredPrompt}
+                onInstall={() => {
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult: any) => {
+                      if (choiceResult.outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                      }
+                    });
+                  }
+                }}
               />
             </motion.div>
           )}
@@ -570,7 +589,11 @@ export default function App() {
               onClose={() => setIsScanning(false)}
               onFallback={() => {
                 setIsScanning(false);
-                fileInputRef.current?.click();
+                // Small delay to ensure the Scanner unmounts and the UI is stable
+                // before triggering the file picker, which helps on some mobile browsers.
+                setTimeout(() => {
+                  fileInputRef.current?.click();
+                }, 100);
               }}
               language={language}
             />
@@ -639,10 +662,20 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <input type="file" ref={fileInputRef} onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) processReceipt(file);
-        }} accept="image/*,application/pdf" className="hidden" />
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              processReceipt(file);
+              e.target.value = '';
+            }
+          }} 
+          accept="image/*,application/pdf" 
+          className="sr-only" 
+          aria-hidden="true"
+        />
       </div>
     </ErrorBoundary>
   );

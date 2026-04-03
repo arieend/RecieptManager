@@ -71,7 +71,10 @@ export const MainView: React.FC<MainViewProps> = ({
         <input 
           type="file" 
           accept="image/*,application/pdf" 
-          onChange={onUpload}
+          onChange={(e) => {
+            onUpload(e);
+            e.target.value = '';
+          }}
           className="absolute inset-0 opacity-0 cursor-pointer z-10"
         />
         <Button 

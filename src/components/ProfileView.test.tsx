@@ -18,6 +18,8 @@ describe('ProfileView', () => {
     driveToken: 'mock-token',
     translations: translations,
     language: 'en' as const,
+    deferredPrompt: null,
+    onInstall: vi.fn(),
   };
 
   it('renders user information correctly', () => {

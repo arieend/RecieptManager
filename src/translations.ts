@@ -134,6 +134,8 @@ export interface Translations {
   quotaExceededDesc: string;
   offlineMode: string;
   offlineDesc: string;
+  installApp: string;
+  installAppDesc: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -271,6 +273,8 @@ export const translations: Record<Language, Translations> = {
     quotaExceededDesc: "You've reached the daily free limit for database reads. History updates are paused until tomorrow.",
     offlineMode: "Offline Mode",
     offlineDesc: "You are currently offline. You can view your history, but scanning and syncing are disabled.",
+    installApp: "Install App",
+    installAppDesc: "Install Receipt Manager on your device for a better experience.",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -406,5 +410,7 @@ export const translations: Record<Language, Translations> = {
     quotaExceededDesc: "הגעת למגבלת הקריאות היומית בחינם. עדכוני ההיסטוריה מושהים עד מחר.",
     offlineMode: "מצב לא מקוון",
     offlineDesc: "אתה כרגע לא מחובר לאינטרנט. ניתן לצפות בהיסטוריה, אך סריקה וסנכרון מושבתים.",
+    installApp: "התקן אפליקציה",
+    installAppDesc: "התקן את מנהל החשבוניות על המכשיר שלך לחוויה טובה יותר.",
   }
 };

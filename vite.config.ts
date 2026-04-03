@@ -18,6 +18,9 @@ export default defineConfig(({mode}) => {
           short_name: 'ReceiptAI',
           description: 'AI-powered receipt management and expense splitting',
           theme_color: '#059669',
+          background_color: '#ffffff',
+          display: 'standalone',
+          start_url: '/',
           icons: [
             {
               src: 'https://picsum.photos/seed/receipt-192/192/192',

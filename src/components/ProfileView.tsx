@@ -10,10 +10,13 @@ interface ProfileViewProps {
   driveToken: string | null;
   translations: any;
   language: 'en' | 'he';
+  deferredPrompt: any;
+  onInstall: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
-  user, onBack, onLogout, onReconnectDrive, driveToken, translations, language 
+  user, onBack, onLogout, onReconnectDrive, driveToken, translations, language,
+  deferredPrompt, onInstall
 }) => (
   <main className="flex-1 flex flex-col bg-slate-50">
     {/* Header */}
@@ -74,6 +77,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {translations[language].accountSettings}
         </h4>
         <div className="space-y-2">
+          {deferredPrompt && (
+            <Card className="p-4 flex justify-between items-center bg-emerald-50 border-emerald-100 hover:bg-emerald-100 transition-colors cursor-pointer" onClick={onInstall}>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
+                  <Settings size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{translations[language].installApp}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{translations[language].installAppDesc}</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-emerald-300" />
+            </Card>
+          )}
+
           <Card className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">

@@ -4,10 +4,11 @@
  * Returns a base64 string.
  */
 export const resizeImage = (file: File | Blob, maxWidth: number = 1000, maxHeight: number = 1000): Promise<string> => {
+  console.log("Resizing image...", file.size, "bytes");
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error("Image processing timed out. The file might be corrupted or too large."));
-    }, 15000); // 15 second timeout
+    }, 30000); // 30 second timeout
 
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
