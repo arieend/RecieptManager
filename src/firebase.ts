@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, limit, getDocFromServer, deleteDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -56,6 +56,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Force persistence to survive refreshes
+setPersistence(auth, browserLocalPersistence).catch(err => {
+  console.error("Failed to set auth persistence:", err);
+});
+
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/drive.file');

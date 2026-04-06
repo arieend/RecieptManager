@@ -11,6 +11,7 @@ describe('MainView', () => {
     ],
     onScan: vi.fn(),
     onUpload: vi.fn(),
+    onUploadFolder: vi.fn(),
     onHistoryClick: vi.fn(),
     onSessionClick: vi.fn(),
     translations,

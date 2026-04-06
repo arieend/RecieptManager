@@ -33,6 +33,7 @@ import { ConfirmModal } from './components/Modal';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [language, setLanguage] = useState<Language>('en');
   const [view, setView] = useState<'main' | 'history' | 'profile' | 'session'>('main');
   const [isScanning, setIsScanning] = useState(false);
@@ -45,6 +46,8 @@ export default function App() {
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [processingQueue, setProcessingQueue] = useState<File[]>([]);
+  const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const [driveToken, setDriveToken] = useState<string | null>(() => {
     const token = localStorage.getItem('drive_token');
     const timestamp = localStorage.getItem('drive_token_timestamp');
@@ -88,6 +91,7 @@ export default function App() {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setIsAuthLoading(false);
       if (user) {
         const q = query(
           collection(db, 'sessions'),
@@ -268,6 +272,102 @@ export default function App() {
     }
   };
 
+  const processBatch = async (files: File[]) => {
+    if (files.length === 0 || !user) return;
+    
+    setProcessingQueue(files);
+    setCurrentBatchIndex(0);
+    setIsParsing(true);
+
+    const results: Session[] = [];
+    for (let i = 0; i < files.length; i++) {
+      setCurrentBatchIndex(i);
+      const file = files[i];
+      
+      try {
+        let base64: string;
+        let mimeType = file.type;
+        let originalExtension = file.name.split('.').pop() || (mimeType === 'application/pdf' ? 'pdf' : 'jpg');
+
+        if (mimeType.includes('pdf')) {
+          base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        } else {
+          base64 = await resizeImage(file);
+        }
+
+        const result = await parseReceiptImage(base64, mimeType);
+        
+        let createdAt = new Date().toISOString();
+        if (result.transaction_datetime) {
+          try {
+            const extractedDate = new Date(result.transaction_datetime);
+            if (!isNaN(extractedDate.getTime())) {
+              createdAt = extractedDate.toISOString();
+            }
+          } catch (e) {}
+        }
+
+        const familyPerson: Person = {
+          id: 'person-family',
+          name: 'משפחה',
+          color: 'hsl(150, 70%, 50%)'
+        };
+        
+        const newSession: Session = {
+          id: (Date.now() + i).toString(),
+          userId: user.uid,
+          storeName: result.store_or_brand_name || 'unknown',
+          englishStoreName: result.store_name_english || result.store_or_brand_name || 'unknown',
+          createdAt,
+          items: (result.items || []).map((item: any, idx: number) => ({
+            id: `item-${idx}`,
+            name: item.name,
+            price: Number(item.unit_price || item.price || 0) || 0,
+            quantity: Number(item.quantity || 1) || 1,
+            category: item.category,
+            labels: item.labels,
+            assignedTo: [familyPerson.id]
+          })),
+          people: [familyPerson],
+          tax: Number(result.tax || 0) || 0,
+          tip: Number(result.tip || 0) || 0,
+          total: Number(result.price || 0) || 0,
+          imageUrl: base64
+        };
+
+        // Auto-save if enabled
+        if (settings.autoSave) {
+          await saveSession(newSession, originalExtension);
+        } else {
+          // If not auto-saving, we still need to add it to history if it's a batch
+          const updatedHistory = [newSession, ...history];
+          setHistory(updatedHistory);
+          localStorage.setItem(`history_${user.uid}`, JSON.stringify(updatedHistory));
+        }
+        
+        results.push(newSession);
+      } catch (err) {
+        console.error(`Error processing file ${file.name}:`, err);
+      }
+    }
+
+    setProcessingQueue([]);
+    setIsParsing(false);
+    
+    if (results.length === 1) {
+      setCurrentSession(results[0]);
+      setView('session');
+    } else if (results.length > 1) {
+      setView('history');
+      setShowToast(language === 'he' ? `עובדו ${results.length} קבלות בהצלחה` : `Successfully processed ${results.length} receipts`);
+    }
+  };
+
   const saveSession = async (sessionToUse?: Session, forceExtension?: string) => {
     const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
     if (!session || !user) return;
@@ -431,6 +531,24 @@ export default function App() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="relative w-32 h-32 mb-8">
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 border-8 border-emerald-100 border-t-emerald-600 rounded-[2.5rem]"
+          />
+          <div className="absolute inset-0 flex items-center justify-center text-emerald-600">
+            <Sparkles size={48} className="animate-pulse" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight italic">LOADING...</h2>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
@@ -503,8 +621,18 @@ export default function App() {
                 history={history} 
                 onScan={() => setIsScanning(true)}
                 onUpload={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) processReceipt(file);
+                  const files = Array.from(e.target.files || []);
+                  if (files.length > 1) {
+                    processBatch(files);
+                  } else if (files.length === 1) {
+                    processReceipt(files[0]);
+                  }
+                }}
+                onUploadFolder={(e) => {
+                  const files = Array.from(e.target.files || []).filter(f => 
+                    f.type.includes('image/') || f.type.includes('pdf')
+                  );
+                  processBatch(files);
                 }}
                 onHistoryClick={() => setView('history')}
                 onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
@@ -617,8 +745,23 @@ export default function App() {
                   <Sparkles size={48} className="animate-pulse" />
                 </div>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight italic">{t.parsingReceipt}</h2>
-              <p className="text-slate-500 max-w-xs font-medium">{t.uploadDesc}</p>
+              <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight italic">
+                {processingQueue.length > 0 ? t.batchProcessing : t.parsingReceipt}
+              </h2>
+              <p className="text-slate-500 max-w-xs font-medium">
+                {processingQueue.length > 0 
+                  ? `${t.processingFile} ${currentBatchIndex + 1} ${t.of} ${processingQueue.length}`
+                  : t.uploadDesc}
+              </p>
+              {processingQueue.length > 0 && (
+                <div className="w-64 h-2 bg-slate-100 rounded-full mt-6 overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((currentBatchIndex + 1) / processingQueue.length) * 100}%` }}
+                    className="h-full bg-emerald-600"
+                  />
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

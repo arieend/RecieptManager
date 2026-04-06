@@ -136,6 +136,11 @@ export interface Translations {
   offlineDesc: string;
   installApp: string;
   installAppDesc: string;
+  batchProcessing: string;
+  processingFile: string;
+  of: string;
+  processFolder: string;
+  selectFiles: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -275,6 +280,11 @@ export const translations: Record<Language, Translations> = {
     offlineDesc: "You are currently offline. You can view your history, but scanning and syncing are disabled.",
     installApp: "Install App",
     installAppDesc: "Install Receipt Manager on your device for a better experience.",
+    batchProcessing: "Batch Processing",
+    processingFile: "Processing file",
+    of: "of",
+    processFolder: "Process Folder",
+    selectFiles: "Select Files",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -412,5 +422,10 @@ export const translations: Record<Language, Translations> = {
     offlineDesc: "אתה כרגע לא מחובר לאינטרנט. ניתן לצפות בהיסטוריה, אך סריקה וסנכרון מושבתים.",
     installApp: "התקן אפליקציה",
     installAppDesc: "התקן את מנהל החשבוניות על המכשיר שלך לחוויה טובה יותר.",
+    batchProcessing: "עיבוד קבוצתי",
+    processingFile: "מעבד קובץ",
+    of: "מתוך",
+    processFolder: "עבד תיקייה",
+    selectFiles: "בחר קבצים",
   }
 };

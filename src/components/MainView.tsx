@@ -8,6 +8,7 @@ interface MainViewProps {
   history: any[];
   onScan: () => void;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUploadFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onHistoryClick: () => void;
   onSessionClick: (session: any) => void;
   translations: any;
@@ -18,7 +19,7 @@ interface MainViewProps {
 }
 
 export const MainView: React.FC<MainViewProps> = ({ 
-  user, history, onScan, onUpload, onHistoryClick, onSessionClick, translations, language, currencySymbol, driveToken, onReconnectDrive 
+  user, history, onScan, onUpload, onUploadFolder, onHistoryClick, onSessionClick, translations, language, currencySymbol, driveToken, onReconnectDrive 
 }) => (
   <main className="flex-1 p-6 space-y-8 max-w-2xl mx-auto w-full">
     {/* Welcome Section */}
@@ -56,7 +57,7 @@ export const MainView: React.FC<MainViewProps> = ({
     )}
 
     {/* Action Buttons */}
-    <section className="grid grid-cols-2 gap-4">
+    <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Button 
         variant="primary" 
         size="lg" 
@@ -67,24 +68,50 @@ export const MainView: React.FC<MainViewProps> = ({
         {translations[language].scanReceipt}
       </Button>
       
-      <div className="relative h-48">
-        <input 
-          type="file" 
-          accept="image/*,application/pdf" 
-          onChange={(e) => {
-            onUpload(e);
-            e.target.value = '';
-          }}
-          className="absolute inset-0 opacity-0 cursor-pointer z-10"
-        />
-        <Button 
-          variant="outline" 
-          size="lg" 
-          className="w-full h-full flex-col gap-3 rounded-[2.5rem] text-xl border-2 border-dashed border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50"
-          leftIcon={<FileUp size={32} strokeWidth={2.5} className="text-emerald-600" />}
-        >
-          {translations[language].uploadFile}
-        </Button>
+      <div className="grid grid-cols-1 gap-4 h-48">
+        <div className="relative h-full">
+          <input 
+            type="file" 
+            multiple
+            accept="image/*,application/pdf" 
+            onChange={(e) => {
+              onUpload(e);
+              e.target.value = '';
+            }}
+            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+          />
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="w-full h-full flex-col gap-2 rounded-[2.5rem] text-lg border-2 border-dashed border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50"
+            leftIcon={<FileUp size={28} strokeWidth={2.5} className="text-emerald-600" />}
+          >
+            {translations[language].selectFiles}
+          </Button>
+        </div>
+        
+        <div className="relative h-full hidden sm:block">
+          <input 
+            type="file" 
+            // @ts-ignore
+            webkitdirectory=""
+            // @ts-ignore
+            directory=""
+            onChange={(e) => {
+              onUploadFolder(e);
+              e.target.value = '';
+            }}
+            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+          />
+          <Button 
+            variant="ghost" 
+            size="lg" 
+            className="w-full h-full flex-col gap-2 rounded-[2.5rem] text-lg border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50/50"
+            leftIcon={<History size={28} strokeWidth={2.5} className="text-emerald-600" />}
+          >
+            {translations[language].processFolder}
+          </Button>
+        </div>
       </div>
     </section>
 
