@@ -128,52 +128,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {settings.syncToSheets && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                  <div className="space-y-5">
+                    {/* Spreadsheet Name */}
+                    <div className="space-y-3">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        {t.spreadsheetId}
-                        <button 
-                          onClick={() => setShowInfo(!showInfo)}
-                          className="text-slate-300 hover:text-emerald-500 transition-colors"
-                        >
-                          <Info size={14} />
-                        </button>
+                        {t.spreadsheetName}
                       </label>
+                      <input
+                        type="text"
+                        value={settings.spreadsheetName}
+                        onChange={(e) => setSettings({ ...settings, spreadsheetName: e.target.value })}
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 focus:ring-0 transition-all font-medium text-slate-700"
+                        placeholder="e.g. Receipts Database"
+                      />
+                      <p className="text-[10px] text-slate-400 font-medium px-1 italic">
+                        {t.spreadsheetNameHelp}
+                      </p>
                     </div>
-                    
-                    <AnimatePresence>
-                      {showInfo && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium leading-relaxed mb-3 border border-emerald-100 space-y-2">
-                            <p>{t.spreadsheetIdHelp}</p>
-                            <p className="font-black text-emerald-800">
-                              {language === 'he' ? 'חשוב: וודא ש-Google Sheets API מופעל בחשבון הגוגל שלך.' : 'Important: Ensure Google Sheets API is enabled in your Google Cloud Console.'}
-                            </p>
-                            <a 
-                              href="https://console.developers.google.com/apis/api/sheets.googleapis.com/overview" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-emerald-600 underline hover:text-emerald-800 transition-colors"
-                            >
-                              {language === 'he' ? 'לחץ כאן להפעלה' : 'Click here to enable'}
-                            </a>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
-                    <input
-                      type="text"
-                      value={settings.spreadsheetId}
-                      onChange={(e) => setSettings({ ...settings, spreadsheetId: e.target.value })}
-                      className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 focus:ring-0 transition-all font-medium text-slate-700"
-                      placeholder={t.spreadsheetIdPlaceholder}
-                    />
+                    {/* Spreadsheet ID */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          {t.spreadsheetId}
+                          <button 
+                            onClick={() => setShowInfo(!showInfo)}
+                            className="text-slate-300 hover:text-emerald-500 transition-colors"
+                          >
+                            <Info size={14} />
+                          </button>
+                        </label>
+                      </div>
+                      
+                      <AnimatePresence>
+                        {showInfo && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium leading-relaxed mb-3 border border-emerald-100 space-y-2">
+                              <p>{t.spreadsheetIdHelp}</p>
+                              <p className="font-black text-emerald-800">
+                                {language === 'he' ? 'חשוב: וודא ש-Google Sheets API מופעל בחשבון הגוגל שלך.' : 'Important: Ensure Google Sheets API is enabled in your Google Cloud Console.'}
+                              </p>
+                              <a 
+                                href="https://console.developers.google.com/apis/api/sheets.googleapis.com/overview" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-600 underline hover:text-emerald-800 transition-colors"
+                              >
+                                {language === 'he' ? 'לחץ כאן להפעלה' : 'Click here to enable'}
+                              </a>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <input
+                        type="text"
+                        value={settings.spreadsheetId}
+                        onChange={(e) => setSettings({ ...settings, spreadsheetId: e.target.value })}
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 focus:ring-0 transition-all font-medium text-slate-700"
+                        placeholder={t.spreadsheetIdPlaceholder}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

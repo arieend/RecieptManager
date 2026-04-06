@@ -57,6 +57,21 @@ export const getOrCreateFolder = async (token: string, folderName: string, paren
   return responseData.id;
 };
 
+export const findSpreadsheetByName = async (token: string, name: string): Promise<string | null> => {
+  const query = encodeURIComponent(`name = '${name}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`);
+  const response = await fetch(`${DRIVE_API_URL}/files?q=${query}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (data.files && data.files.length > 0) {
+    return data.files[0].id;
+  }
+  return null;
+};
+
 export const getOrCreateFolderPath = async (token: string, path: string[]): Promise<string> => {
   let currentParentId: string | undefined = undefined;
   for (const folderName of path) {

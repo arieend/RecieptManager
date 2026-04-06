@@ -1,6 +1,6 @@
 import { Session, Person, ReceiptItem } from '../types';
 import { StorageSettings, buildDirectoryPath, formatDateTimeForFilename, sanitizeFilename, formatDateForSheets } from './configService';
-import { getOrCreateFolderPath, uploadFileToDrive } from './driveService';
+import { getOrCreateFolderPath, uploadFileToDrive, findSpreadsheetByName } from './driveService';
 import { createReceiptsSpreadsheet, appendToSpreadsheet } from './sheetsService';
 
 export interface SyncResult {
@@ -48,7 +48,14 @@ export const syncToCloud = async (
     try {
       let currentSpreadsheetId = settings.spreadsheetId;
       if (!currentSpreadsheetId) {
-        currentSpreadsheetId = await createReceiptsSpreadsheet(driveToken);
+        // Try to find by name first to avoid duplicates
+        currentSpreadsheetId = await findSpreadsheetByName(driveToken, settings.spreadsheetName) || '';
+        
+        if (!currentSpreadsheetId) {
+          // Create it if not found
+          currentSpreadsheetId = await createReceiptsSpreadsheet(driveToken, settings.spreadsheetName);
+        }
+        
         result.spreadsheetId = currentSpreadsheetId;
       }
 

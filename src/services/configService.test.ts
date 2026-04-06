@@ -30,6 +30,7 @@ describe('configService', () => {
       autoSave: false,
       syncToSheets: false,
       spreadsheetId: '123',
+      spreadsheetName: 'Receipts Database',
       currency: 'USD'
     };
     saveSettings(newSettings);
@@ -67,6 +68,7 @@ describe('configService', () => {
       autoSave: true,
       syncToSheets: true,
       spreadsheetId: '',
+      spreadsheetName: 'Receipts Database',
       currency: 'ILS'
     };
     const date = new Date(2024, 5, 15); // June 15, 2024

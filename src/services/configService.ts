@@ -9,6 +9,7 @@ export interface StorageSettings {
   autoSave: boolean;
   syncToSheets: boolean;
   spreadsheetId: string;
+  spreadsheetName: string;
   currency: 'USD' | 'EUR' | 'ILS';
 }
 
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: StorageSettings = {
   autoSave: true,
   syncToSheets: true,
   spreadsheetId: '',
+  spreadsheetName: 'Receipts Database',
   currency: 'ILS'
 };
 

@@ -18,6 +18,7 @@ describe('SettingsModal', () => {
     autoSave: true,
     syncToSheets: true,
     spreadsheetId: 'sheet-123',
+    spreadsheetName: 'Receipts Database',
     currency: 'ILS' as const,
   };
 

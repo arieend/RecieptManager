@@ -16,6 +16,7 @@ describe('syncService', () => {
     autoSave: true,
     syncToSheets: true,
     spreadsheetId: 'sheet-123',
+    spreadsheetName: 'Receipts Database',
     currency: 'ILS'
   };
 
@@ -73,15 +74,29 @@ describe('syncService', () => {
     );
   });
 
-  it('creates a new spreadsheet if ID is missing', async () => {
+  it('creates a new spreadsheet if ID is missing and not found by name', async () => {
     const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
+    vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue(null);
     vi.mocked(sheetsService.createReceiptsSpreadsheet).mockResolvedValue('new-sheet-456');
     vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
 
     const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
 
     expect(result.spreadsheetId).toBe('new-sheet-456');
-    expect(sheetsService.createReceiptsSpreadsheet).toHaveBeenCalledWith(mockToken);
+    expect(driveService.findSpreadsheetByName).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
+    expect(sheetsService.createReceiptsSpreadsheet).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
+  });
+
+  it('uses existing spreadsheet if found by name', async () => {
+    const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
+    vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue('existing-sheet-789');
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+
+    const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
+
+    expect(result.spreadsheetId).toBe('existing-sheet-789');
+    expect(driveService.findSpreadsheetByName).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
+    expect(sheetsService.createReceiptsSpreadsheet).not.toHaveBeenCalled();
   });
 
   it('skips Drive upload if already uploaded', async () => {

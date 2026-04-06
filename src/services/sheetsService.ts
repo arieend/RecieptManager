@@ -1,7 +1,7 @@
 
 const SHEETS_API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
 
-export const createReceiptsSpreadsheet = async (token: string): Promise<string> => {
+export const createReceiptsSpreadsheet = async (token: string, title: string = 'Receipts Database'): Promise<string> => {
   const response = await fetch(SHEETS_API_URL, {
     method: 'POST',
     headers: {
@@ -10,7 +10,7 @@ export const createReceiptsSpreadsheet = async (token: string): Promise<string> 
     },
     body: JSON.stringify({
       properties: {
-        title: 'Receipts Database',
+        title,
       },
       sheets: [
         {

@@ -104,6 +104,8 @@ export interface Translations {
   eur: string;
   ils: string;
   syncToSheets: string;
+  spreadsheetName: string;
+  spreadsheetNameHelp: string;
   spreadsheetId: string;
   spreadsheetIdHelp: string;
   spreadsheetIdPlaceholder: string;
@@ -248,9 +250,11 @@ export const translations: Record<Language, Translations> = {
     eur: "EUR (€)",
     ils: "NIS (₪)",
     syncToSheets: "Sync to Google Sheets",
+    spreadsheetName: "Spreadsheet Name",
+    spreadsheetNameHelp: "The app will look for an existing spreadsheet with this name. If not found, it will create a new one.",
     spreadsheetId: "Spreadsheet ID",
-    spreadsheetIdHelp: "The ID of your Google Sheet. You can find it in the URL of your spreadsheet: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
-    spreadsheetIdPlaceholder: "Leave empty to create new",
+    spreadsheetIdHelp: "Optional. If you want to use a specific sheet, enter its ID from the URL: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
+    spreadsheetIdPlaceholder: "Leave empty to find by name",
     creatingSpreadsheet: "Creating Receipts Database...",
     categoryBreakdown: "Category Breakdown",
     assignedProgress: "Assignment Progress",
@@ -390,9 +394,11 @@ export const translations: Record<Language, Translations> = {
     eur: "אירו (€)",
     ils: "שקל (₪)",
     syncToSheets: "סנכרון ל-Google Sheets",
+    spreadsheetName: "שם הגיליון",
+    spreadsheetNameHelp: "האפליקציה תחפש גיליון קיים בשם זה. אם לא יימצא, ייווצר גיליון חדש.",
     spreadsheetId: "מזהה גיליון (Spreadsheet ID)",
-    spreadsheetIdHelp: "המזהה של גיליון הגוגל שלך. ניתן למצוא אותו בכתובת ה-URL של הגיליון: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
-    spreadsheetIdPlaceholder: "השאר ריק ליצירת חדש",
+    spreadsheetIdHelp: "אופציונלי. אם ברצונך להשתמש בגיליון ספציפי, הזן את המזהה שלו מהכתובת: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
+    spreadsheetIdPlaceholder: "השאר ריק לחיפוש לפי שם",
     creatingSpreadsheet: "יוצר מאגר נתוני קבלות...",
     categoryBreakdown: "פירוט לפי קטגוריות",
     assignedProgress: "התקדמות שיוך",
