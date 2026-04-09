@@ -109,6 +109,9 @@ export interface Translations {
   spreadsheetId: string;
   spreadsheetIdHelp: string;
   spreadsheetIdPlaceholder: string;
+  exchangeRate: string;
+  convertedTo: string;
+  nisEquivalent: string;
   creatingSpreadsheet: string;
   categoryBreakdown: string;
   assignedProgress: string;
@@ -122,6 +125,7 @@ export interface Translations {
   personName: string;
   openInDrive: string;
   viewOnDrive: string;
+  viewInSheets: string;
   cropTitle: string;
   smartCrop: string;
   manualCrop: string;
@@ -255,6 +259,9 @@ export const translations: Record<Language, Translations> = {
     spreadsheetId: "Spreadsheet ID",
     spreadsheetIdHelp: "Optional. If you want to use a specific sheet, enter its ID from the URL: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
     spreadsheetIdPlaceholder: "Leave empty to find by name",
+    exchangeRate: "Exchange Rate (to NIS)",
+    convertedTo: "Converted to NIS",
+    nisEquivalent: "NIS Equivalent",
     creatingSpreadsheet: "Creating Receipts Database...",
     categoryBreakdown: "Category Breakdown",
     assignedProgress: "Assignment Progress",
@@ -268,6 +275,7 @@ export const translations: Record<Language, Translations> = {
     personName: "Label name:",
     openInDrive: "Open in Google Drive",
     viewOnDrive: "View on Google Drive",
+    viewInSheets: "View in Google Sheets",
     cropTitle: "Crop Receipt",
     smartCrop: "Smart Crop",
     manualCrop: "Manual Crop",
@@ -399,6 +407,9 @@ export const translations: Record<Language, Translations> = {
     spreadsheetId: "מזהה גיליון (Spreadsheet ID)",
     spreadsheetIdHelp: "אופציונלי. אם ברצונך להשתמש בגיליון ספציפי, הזן את המזהה שלו מהכתובת: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit",
     spreadsheetIdPlaceholder: "השאר ריק לחיפוש לפי שם",
+    exchangeRate: "שער חליפין (לשקל)",
+    convertedTo: "הומר לשקלים",
+    nisEquivalent: "שווה ערך בשקלים",
     creatingSpreadsheet: "יוצר מאגר נתוני קבלות...",
     categoryBreakdown: "פירוט לפי קטגוריות",
     assignedProgress: "התקדמות שיוך",
@@ -412,6 +423,7 @@ export const translations: Record<Language, Translations> = {
     personName: "שם תווית:",
     openInDrive: "פתח ב-Google Drive",
     viewOnDrive: "צפה ב-Google Drive",
+    viewInSheets: "צפה ב-Google Sheets",
     cropTitle: "חיתוך קבלה",
     smartCrop: "חיתוך חכם",
     manualCrop: "חיתוך ידני",

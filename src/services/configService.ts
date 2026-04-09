@@ -11,6 +11,7 @@ export interface StorageSettings {
   spreadsheetId: string;
   spreadsheetName: string;
   currency: 'USD' | 'EUR' | 'ILS';
+  theme: 'light' | 'dark';
 }
 
 const DEFAULT_SETTINGS: StorageSettings = {
@@ -24,7 +25,8 @@ const DEFAULT_SETTINGS: StorageSettings = {
   syncToSheets: true,
   spreadsheetId: '',
   spreadsheetName: 'Receipts Database',
-  currency: 'ILS'
+  currency: 'ILS',
+  theme: 'light'
 };
 
 const SETTINGS_KEY = 'receipt_storage_settings';

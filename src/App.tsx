@@ -13,7 +13,7 @@ import {
 import { translations, Language } from './translations';
 import { ReceiptItem, Person, Session } from './types';
 import { Scanner } from './components/Scanner';
-import { parseReceiptImage, interpretChatCommand } from './services/geminiService';
+import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
 import { resizeImage, compressImage } from './utils/imageUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
@@ -85,6 +85,14 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[language];
   const currencySymbol = getCurrencySymbol(settings.currency);
+
+  useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.theme]);
 
   useEffect(() => {
     let unsubscribeSnapshot: (() => void) | null = null;
@@ -177,6 +185,48 @@ export default function App() {
     setView('main');
   };
 
+  const toggleTheme = () => {
+    const newTheme: 'light' | 'dark' = settings.theme === 'light' ? 'dark' : 'light';
+    const newSettings = { ...settings, theme: newTheme };
+    setSettings(newSettings);
+    saveSettings(newSettings);
+  };
+
+  const handleConnectSpreadsheet = async () => {
+    if (!driveToken) {
+      handleLogin();
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      const { findSpreadsheetByName } = await import('./services/driveService');
+      const { createReceiptsSpreadsheet } = await import('./services/sheetsService');
+      
+      const spreadsheetName = settings.spreadsheetName || 'Receipts Database';
+      
+      // 1. Try to find existing first
+      let spreadsheetId = await findSpreadsheetByName(driveToken, spreadsheetName);
+      
+      if (spreadsheetId) {
+        setShowToast(language === 'he' ? 'נמצא גיליון קיים!' : 'Found existing spreadsheet!');
+      } else {
+        // 2. Create if not found
+        spreadsheetId = await createReceiptsSpreadsheet(driveToken, spreadsheetName);
+        setShowToast(language === 'he' ? 'גיליון נוצר בהצלחה!' : 'Spreadsheet created successfully!');
+      }
+      
+      const newSettings = { ...settings, spreadsheetId, syncToSheets: true };
+      setSettings(newSettings);
+      saveSettings(newSettings);
+    } catch (error) {
+      console.error("Error connecting spreadsheet:", error);
+      setShowToast(language === 'he' ? 'שגיאה בחיבור הגיליון.' : 'Failed to connect spreadsheet.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const processReceipt = async (file: File | string) => {
     console.log("Processing receipt...", typeof file === 'string' ? "base64" : file.name);
     setIsParsing(true);
@@ -244,6 +294,8 @@ export default function App() {
         tax: Number(result.tax || 0) || 0,
         tip: Number(result.tip || 0) || 0,
         total: Number(result.price || 0) || 0,
+        currency: (result.currency as 'ILS' | 'USD' | 'EUR') || 'ILS',
+        exchangeRate: Number(result.exchange_rate_to_ils || 1) || 1,
         imageUrl: base64
       };
 
@@ -337,6 +389,8 @@ export default function App() {
           tax: Number(result.tax || 0) || 0,
           tip: Number(result.tip || 0) || 0,
           total: Number(result.price || 0) || 0,
+          currency: (result.currency as 'ILS' | 'USD' | 'EUR') || 'ILS',
+          exchangeRate: Number(result.exchange_rate_to_ils || 1) || 1,
           imageUrl: base64
         };
 
@@ -378,6 +432,8 @@ export default function App() {
       let driveFileId = session.driveFileId;
       let driveLink = session.driveLink;
       let driveFileName = session.driveFileName;
+      let spreadsheetLink = session.spreadsheetLink;
+      let items = [...session.items];
 
       // 1. Sync to Cloud (Drive & Sheets)
       if (driveToken && (imageUrl && !driveFileId || settings.syncToSheets)) {
@@ -387,6 +443,14 @@ export default function App() {
           if (syncResult.driveFileId) driveFileId = syncResult.driveFileId;
           if (syncResult.driveLink) driveLink = syncResult.driveLink;
           if (syncResult.driveFileName) driveFileName = syncResult.driveFileName;
+          if (syncResult.spreadsheetLink) spreadsheetLink = syncResult.spreadsheetLink;
+          
+          if (syncResult.itemSheetsLinks) {
+            items = items.map(item => ({
+              ...item,
+              sheetsLink: syncResult.itemSheetsLinks?.[item.id] || item.sheetsLink
+            }));
+          }
           
           if (syncResult.spreadsheetId) {
             const newSettings = { ...settings, spreadsheetId: syncResult.spreadsheetId };
@@ -424,6 +488,8 @@ export default function App() {
         driveFileId: driveFileId || "",
         driveLink: driveLink || "",
         driveFileName: driveFileName || "",
+        spreadsheetLink: spreadsheetLink || "",
+        items: items,
         updatedAt: new Date().toISOString()
       };
       delete sessionData.id;
@@ -521,6 +587,18 @@ export default function App() {
           ...currentSession,
           items: [...currentSession.items, newItem]
         });
+      } else if (result.action === 'change_currency' && result.currency) {
+        let rate = 1;
+        if (result.currency !== 'ILS') {
+          try {
+            rate = await getExchangeRate(result.currency, 'ILS');
+          } catch (e) {
+            console.error("Rate fetch error:", e);
+          }
+        }
+        setCurrentSession({ ...currentSession, currency: result.currency, exchangeRate: rate });
+      } else if (result.action === 'update_rate' && result.rate) {
+        setCurrentSession({ ...currentSession, exchangeRate: result.rate });
       } else {
         setShowToast(t.commandErrorMessage);
       }
@@ -533,47 +611,47 @@ export default function App() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
         <div className="relative w-32 h-32 mb-8">
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 border-8 border-emerald-100 border-t-emerald-600 rounded-[2.5rem]"
+            className="absolute inset-0 border-8 border-emerald-100 dark:border-emerald-900/30 border-t-emerald-600 rounded-[2.5rem]"
           />
           <div className="absolute inset-0 flex items-center justify-center text-emerald-600">
             <Sparkles size={48} className="animate-pulse" />
           </div>
         </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight italic">LOADING...</h2>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3 tracking-tight italic">LOADING...</h2>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 border border-slate-100"
+          className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl p-10 border border-slate-100 dark:border-slate-800"
         >
-          <div className="w-24 h-24 bg-emerald-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-emerald-200">
+          <div className="w-24 h-24 bg-emerald-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-emerald-200 dark:shadow-emerald-900/30">
             <Camera size={48} strokeWidth={2.5} />
           </div>
-          <h1 className="text-4xl font-black text-slate-900 mb-3 tracking-tight italic">RECEIPT</h1>
-          <p className="text-slate-500 mb-10 font-medium leading-relaxed">{t.uploadDesc}</p>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-3 tracking-tight italic">RECEIPT</h1>
+          <p className="text-slate-500 dark:text-slate-400 mb-10 font-medium leading-relaxed">{t.uploadDesc}</p>
           
           <button 
             onClick={handleLogin}
-            className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl font-black text-lg flex items-center justify-center gap-4 transition-all shadow-xl shadow-emerald-200 active:scale-95"
+            className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl font-black text-lg flex items-center justify-center gap-4 transition-all shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 active:scale-95"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/controller/google.svg" className="w-7 h-7 bg-white rounded-full p-1.5" alt="Google" />
             {t.loginWithGoogle}
           </button>
 
           <div className="mt-10 flex justify-center gap-4">
-            <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded-xl font-bold transition-all ${language === 'en' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-slate-100'}`}>English</button>
-            <button onClick={() => setLanguage('he')} className={`px-4 py-2 rounded-xl font-bold transition-all ${language === 'he' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-slate-100'}`}>עברית</button>
+            <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded-xl font-bold transition-all ${language === 'en' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>English</button>
+            <button onClick={() => setLanguage('he')} className={`px-4 py-2 rounded-xl font-bold transition-all ${language === 'he' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>עברית</button>
           </div>
         </motion.div>
       </div>
@@ -582,7 +660,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className={`min-h-screen bg-slate-50 flex flex-col ${language === 'he' ? 'rtl font-hebrew' : 'ltr'}`} dir={language === 'he' ? 'rtl' : 'ltr'}>
+      <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col ${language === 'he' ? 'rtl font-hebrew' : 'ltr'}`} dir={language === 'he' ? 'rtl' : 'ltr'}>
         <Header 
           user={user} 
           language={language} 
@@ -591,10 +669,18 @@ export default function App() {
           onSettingsClick={() => setIsSettingsOpen(true)}
           onLogout={handleLogout}
           translations={translations}
+          spreadsheetId={settings.spreadsheetId}
+          spreadsheetName={settings.spreadsheetName}
+          driveToken={driveToken}
+          onReconnectDrive={handleLogin}
+          onCreateSpreadsheet={handleConnectSpreadsheet}
+          isCreatingSpreadsheet={isSaving}
+          theme={settings.theme}
+          onToggleTheme={toggleTheme}
         />
 
         {isQuotaExceeded && (
-          <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-center gap-3 text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-900/30 p-4 flex items-center gap-3 text-amber-800 dark:text-amber-200">
             <Sparkles size={20} className="text-amber-500 flex-shrink-0" />
             <div className="text-sm">
               <span className="font-bold">{t.quotaExceeded}: </span>
@@ -636,11 +722,13 @@ export default function App() {
                 }}
                 onHistoryClick={() => setView('history')}
                 onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
+                onSettingsClick={() => setIsSettingsOpen(true)}
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}
                 driveToken={driveToken}
                 onReconnectDrive={handleLogin}
+                settings={settings}
               />
             </motion.div>
           )}
@@ -657,6 +745,7 @@ export default function App() {
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}
+                settings={settings}
               />
             </motion.div>
           )}
@@ -676,6 +765,7 @@ export default function App() {
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}
+                settings={settings}
               />
             </motion.div>
           )}
@@ -733,28 +823,28 @@ export default function App() {
           {isParsing && (
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center"
+              className="fixed inset-0 z-[100] bg-white/90 dark:bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center"
             >
               <div className="relative w-32 h-32 mb-8">
                 <motion.div 
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border-8 border-emerald-100 border-t-emerald-600 rounded-[2.5rem]"
+                  className="absolute inset-0 border-8 border-emerald-100 dark:border-emerald-900/30 border-t-emerald-600 rounded-[2.5rem]"
                 />
                 <div className="absolute inset-0 flex items-center justify-center text-emerald-600">
                   <Sparkles size={48} className="animate-pulse" />
                 </div>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight italic">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tracking-tight italic">
                 {processingQueue.length > 0 ? t.batchProcessing : t.parsingReceipt}
               </h2>
-              <p className="text-slate-500 max-w-xs font-medium">
+              <p className="text-slate-500 dark:text-slate-400 max-w-xs font-medium">
                 {processingQueue.length > 0 
                   ? `${t.processingFile} ${currentBatchIndex + 1} ${t.of} ${processingQueue.length}`
                   : t.uploadDesc}
               </p>
               {processingQueue.length > 0 && (
-                <div className="w-64 h-2 bg-slate-100 rounded-full mt-6 overflow-hidden">
+                <div className="w-64 h-2 bg-slate-100 dark:bg-slate-800 rounded-full mt-6 overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${((currentBatchIndex + 1) / processingQueue.length) * 100}%` }}
@@ -779,6 +869,8 @@ export default function App() {
           }}
           t={t}
           language={language}
+          onCreateSpreadsheet={handleConnectSpreadsheet}
+          isCreatingSpreadsheet={isSaving}
         />
 
         <ConfirmModal 
@@ -797,7 +889,7 @@ export default function App() {
           {showToast && (
             <motion.div 
               initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 bg-slate-900 text-white rounded-3xl font-bold shadow-2xl flex items-center gap-3"
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 bg-slate-900 dark:bg-slate-800 text-white rounded-3xl font-bold shadow-2xl flex items-center gap-3"
             >
               <Sparkles size={20} className="text-emerald-400" />
               {showToast}

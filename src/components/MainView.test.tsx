@@ -14,11 +14,22 @@ describe('MainView', () => {
     onUploadFolder: vi.fn(),
     onHistoryClick: vi.fn(),
     onSessionClick: vi.fn(),
+    onSettingsClick: vi.fn(),
     translations,
     language: 'en' as const,
     currencySymbol: '$',
     driveToken: 'mock-token',
     onReconnectDrive: vi.fn(),
+    settings: {
+      storagePath: 'Receipts',
+      directories: { year: true, month: true, day: false },
+      autoSave: true,
+      syncToSheets: true,
+      spreadsheetId: '',
+      spreadsheetName: 'Receipts Database',
+      currency: 'ILS' as const,
+      theme: 'light' as const
+    }
   };
 
   it('renders welcome message with user name', () => {

@@ -31,7 +31,8 @@ describe('configService', () => {
       syncToSheets: false,
       spreadsheetId: '123',
       spreadsheetName: 'Receipts Database',
-      currency: 'USD'
+      currency: 'USD',
+      theme: 'light'
     };
     saveSettings(newSettings);
     const retrieved = getSettings();
@@ -69,7 +70,8 @@ describe('configService', () => {
       syncToSheets: true,
       spreadsheetId: '',
       spreadsheetName: 'Receipts Database',
-      currency: 'ILS'
+      currency: 'ILS',
+      theme: 'light'
     };
     const date = new Date(2024, 5, 15); // June 15, 2024
     const path = buildDirectoryPath(settings, date);

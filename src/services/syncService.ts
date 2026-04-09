@@ -8,6 +8,8 @@ export interface SyncResult {
   driveLink?: string;
   driveFileName?: string;
   spreadsheetId?: string;
+  spreadsheetLink?: string;
+  itemSheetsLinks?: Record<string, string>;
 }
 
 export const syncToCloud = async (
@@ -69,19 +71,44 @@ export const syncToCloud = async (
         const driveFileName = result.driveFileName || session.driveFileName || (session.storeName ? `${session.storeName}_Receipt` : 'Receipt');
         const receiptLink = driveLink ? `=HYPERLINK("${driveLink}", "${driveFileName}")` : '';
         
+        const rate = session.exchangeRate || 1;
+        const priceInNIS = item.price * rate;
+        const originalInfo = session.currency !== 'ILS' ? `${item.price.toFixed(2)} ${session.currency}` : '';
+
         return [
           formatDateForSheets(new Date(session.createdAt)),
           session.storeName,
           item.name,
-          item.price,
+          priceInNIS,
           item.category || '',
           (item.labels || []).join(', '),
           assignedNames || 'משפחה',
-          receiptLink
+          receiptLink,
+          originalInfo,
+          session.currency !== 'ILS' ? rate : ''
         ];
       });
 
-      await appendToSpreadsheet(driveToken, currentSpreadsheetId, rows);
+      const updatedRange = await appendToSpreadsheet(driveToken, currentSpreadsheetId, rows);
+      
+      // Construct spreadsheet link
+      result.spreadsheetLink = `https://docs.google.com/spreadsheets/d/${currentSpreadsheetId}/edit`;
+      
+      // Parse updatedRange to get row links for items
+      // Example updatedRange: "Purchases!A10:J12"
+      if (updatedRange) {
+        const rowMatch = updatedRange.match(/!A(\d+):/);
+        if (rowMatch) {
+          const startRow = parseInt(rowMatch[1]);
+          const itemLinks: Record<string, string> = {};
+          session.items.forEach((item, index) => {
+            const rowNum = startRow + index;
+            // Assuming gid=0 for the first sheet 'Purchases'
+            itemLinks[item.id] = `${result.spreadsheetLink}#gid=0&range=A${rowNum}`;
+          });
+          result.itemSheetsLinks = itemLinks;
+        }
+      }
     } catch (error) {
       console.error("Sheets sync error:", error);
       throw error;

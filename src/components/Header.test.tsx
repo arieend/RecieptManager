@@ -12,6 +12,14 @@ describe('Header', () => {
     onSettingsClick: vi.fn(),
     onLogout: vi.fn(),
     translations: translations,
+    spreadsheetId: 'test-id',
+    spreadsheetName: 'Receipts Database',
+    driveToken: 'test-token',
+    onReconnectDrive: vi.fn(),
+    onCreateSpreadsheet: vi.fn(),
+    isCreatingSpreadsheet: false,
+    theme: 'light' as const,
+    onToggleTheme: vi.fn(),
   };
 
   it('renders app title correctly', () => {

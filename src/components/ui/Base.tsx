@@ -23,11 +23,11 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "inline-flex items-center justify-center rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed";
   
   const variants = {
-    primary: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200",
+    primary: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20",
     secondary: "bg-emerald-500 text-white hover:bg-emerald-400 border border-emerald-400",
-    outline: "bg-white border border-slate-200 text-slate-700 hover:border-emerald-500",
-    ghost: "bg-transparent text-slate-600 hover:bg-slate-100",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100"
+    outline: "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-emerald-500 dark:hover:border-emerald-500",
+    ghost: "bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800",
+    danger: "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
   };
 
   const sizes = {
@@ -65,7 +65,7 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; onC
   return (
     <div 
       onClick={onClick}
-      className={`${!hasBg ? 'bg-white' : ''} rounded-3xl border border-slate-200 shadow-sm ${onClick ? 'cursor-pointer hover:border-emerald-500 transition-all' : ''} ${className}`}
+      className={`${!hasBg ? 'bg-white dark:bg-slate-900' : ''} rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm ${onClick ? 'cursor-pointer hover:border-emerald-500 transition-all' : ''} ${className}`}
     >
       {children}
     </div>
@@ -89,15 +89,15 @@ export const Badge: React.FC<{ children: React.ReactNode; color?: string; onRemo
 export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
       >
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{title}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
@@ -109,9 +109,9 @@ export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: stri
 
 export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label?: string }> = ({ label, className = '', ...props }) => (
   <div className="space-y-1.5">
-    {label && <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">{label}</label>}
+    {label && <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">{label}</label>}
     <input 
-      className={`w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all ${className}`}
+      className={`w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all ${className}`}
       {...props}
     />
   </div>

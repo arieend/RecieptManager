@@ -30,11 +30,13 @@ export const createReceiptsSpreadsheet = async (token: string, title: string = '
                     { userEnteredValue: { stringValue: 'Date' } },
                     { userEnteredValue: { stringValue: 'Store' } },
                     { userEnteredValue: { stringValue: 'Item Name' } },
-                    { userEnteredValue: { stringValue: 'Price' } },
+                    { userEnteredValue: { stringValue: 'Price (NIS)' } },
                     { userEnteredValue: { stringValue: 'Category' } },
                     { userEnteredValue: { stringValue: 'AI Tags' } },
                     { userEnteredValue: { stringValue: 'Labels' } },
                     { userEnteredValue: { stringValue: 'Receipt Link' } },
+                    { userEnteredValue: { stringValue: 'Original Amount' } },
+                    { userEnteredValue: { stringValue: 'Exchange Rate' } },
                   ],
                 },
               ],
@@ -58,7 +60,7 @@ export const appendToSpreadsheet = async (
   token: string,
   spreadsheetId: string,
   rows: any[][]
-): Promise<void> => {
+): Promise<string> => {
   const range = 'Purchases!A1';
   const response = await fetch(
     `${SHEETS_API_URL}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
@@ -78,4 +80,7 @@ export const appendToSpreadsheet = async (
     const errorData = await response.json();
     throw new Error(errorData.error?.message || 'Failed to append to spreadsheet');
   }
+
+  const data = await response.json();
+  return data.updates?.updatedRange || '';
 };

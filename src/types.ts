@@ -8,6 +8,7 @@ export interface ReceiptItem {
   category?: string;
   labels?: string[];
   quantity: number;
+  sheetsLink?: string;
 }
 
 export interface Person {
@@ -27,10 +28,13 @@ export interface Session {
   tax: number;
   tip: number;
   total: number;
+  currency: 'ILS' | 'USD' | 'EUR';
+  exchangeRate: number; // Rate to convert to ILS (1 original unit = X ILS)
   imageUrl?: string;
   driveFileId?: string;
   driveLink?: string;
   driveFileName?: string;
+  spreadsheetLink?: string;
 }
 
 export interface UserProfile {

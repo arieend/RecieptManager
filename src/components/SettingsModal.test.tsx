@@ -20,6 +20,7 @@ describe('SettingsModal', () => {
     spreadsheetId: 'sheet-123',
     spreadsheetName: 'Receipts Database',
     currency: 'ILS' as const,
+    theme: 'light' as const,
   };
 
   const mockProps = {

@@ -10,14 +10,20 @@ interface SummaryCardProps {
   language: Language;
   translations: Record<Language, Translations>;
   currencySymbol: string;
+  currency: 'ILS' | 'USD' | 'EUR';
+  exchangeRate: number;
 }
 
-export const SummaryCard: React.FC<SummaryCardProps> = ({ totals, language, translations, currencySymbol }) => {
+export const SummaryCard: React.FC<SummaryCardProps> = ({ 
+  totals, language, translations, currencySymbol, currency, exchangeRate 
+}) => {
   const [summaryTab, setSummaryTab] = useState<'people' | 'categories' | 'tags'>('people');
   const t = translations[language];
 
+  const nisTotal = totals.total * (exchangeRate || 1);
+
   return (
-    <Card className="p-6 bg-emerald-600 text-white border-none shadow-xl shadow-emerald-200 overflow-hidden relative">
+    <Card className="p-6 bg-emerald-600 text-white border-none shadow-xl shadow-emerald-200 dark:shadow-emerald-900/30 overflow-hidden relative">
       {/* Progress Bar Background */}
       <div className="absolute top-0 left-0 w-full h-1 bg-white/20">
         <motion.div 
@@ -38,8 +44,15 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ totals, language, tran
           </p>
         </div>
         <div className="text-right">
-          <p className="text-4xl font-black">{currencySymbol}{totals.total.toFixed(2)}</p>
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{t.totalAmount}</p>
+          <div className="flex flex-col items-end">
+            <p className="text-4xl font-black">{currencySymbol}{totals.total.toFixed(2)}</p>
+            {currency !== 'ILS' && (
+              <p className="text-xs font-bold opacity-80 mt-1">
+                ≈ ₪{nisTotal.toFixed(2)}
+              </p>
+            )}
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mt-1">{t.totalAmount}</p>
         </div>
       </div>
 
@@ -74,13 +87,23 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ totals, language, tran
                 {totals.personTotals.map((p) => (
                   <div key={p.id} className="flex justify-between items-center bg-white/10 p-3 rounded-2xl">
                     <span className="font-bold">{p.name}</span>
-                    <span className="font-black text-lg">{currencySymbol}{p.amount.toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-black text-lg">{currencySymbol}{p.amount.toFixed(2)}</p>
+                      {currency !== 'ILS' && (
+                        <p className="text-[10px] font-bold opacity-70">≈ ₪{(p.amount * exchangeRate).toFixed(2)}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {totals.unassignedAmount > 0.01 && (
                   <div className="flex justify-between items-center bg-red-400/20 p-3 rounded-2xl border border-red-400/30">
                     <span className="font-bold opacity-80 italic">{t.unassignedAmount}</span>
-                    <span className="font-black text-lg">{currencySymbol}{totals.unassignedAmount.toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-black text-lg">{currencySymbol}{totals.unassignedAmount.toFixed(2)}</p>
+                      {currency !== 'ILS' && (
+                        <p className="text-[10px] font-bold opacity-70">≈ ₪{(totals.unassignedAmount * exchangeRate).toFixed(2)}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </>
@@ -88,13 +111,23 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ totals, language, tran
             {summaryTab === 'categories' && totals.categoryTotals.map((c) => (
               <div key={c.name} className="flex justify-between items-center bg-white/10 p-3 rounded-2xl">
                 <span className="font-bold">{c.name}</span>
-                <span className="font-black text-lg">{currencySymbol}{c.amount.toFixed(2)}</span>
+                <div className="text-right">
+                  <p className="font-black text-lg">{currencySymbol}{c.amount.toFixed(2)}</p>
+                  {currency !== 'ILS' && (
+                    <p className="text-[10px] font-bold opacity-70">≈ ₪{(c.amount * exchangeRate).toFixed(2)}</p>
+                  )}
+                </div>
               </div>
             ))}
             {summaryTab === 'tags' && totals.tagTotals.map((tag) => (
               <div key={tag.name} className="flex justify-between items-center bg-white/10 p-3 rounded-2xl">
                 <span className="font-bold">#{tag.name}</span>
-                <span className="font-black text-lg">{currencySymbol}{tag.amount.toFixed(2)}</span>
+                <div className="text-right">
+                  <p className="font-black text-lg">{currencySymbol}{tag.amount.toFixed(2)}</p>
+                  {currency !== 'ILS' && (
+                    <p className="text-[10px] font-bold opacity-70">≈ ₪{(tag.amount * exchangeRate).toFixed(2)}</p>
+                  )}
+                </div>
               </div>
             ))}
           </motion.div>

@@ -18,13 +18,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   user, onBack, onLogout, onReconnectDrive, driveToken, translations, language,
   deferredPrompt, onInstall
 }) => (
-  <main className="flex-1 flex flex-col bg-slate-50">
+  <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
     {/* Header */}
-    <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 sticky top-0 z-30">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center gap-3 sticky top-0 z-30">
       <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
         <ArrowLeft size={20} />
       </Button>
-      <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+      <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
         <User size={24} className="text-emerald-600" />
         {translations[language].profile}
       </h2>
@@ -32,7 +32,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
     <div className="flex-1 overflow-y-auto p-6 space-y-8">
       {/* Profile Card */}
-      <Card className="p-8 flex flex-col items-center text-center bg-emerald-600 text-white border-none shadow-xl shadow-emerald-200">
+      <Card className="p-8 flex flex-col items-center text-center bg-emerald-600 text-white border-none shadow-xl shadow-emerald-200 dark:shadow-emerald-900/30">
         <div className="w-24 h-24 rounded-[2rem] overflow-hidden border-4 border-white/30 shadow-2xl mb-4">
           {user?.photoURL ? (
             <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -48,24 +48,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Drive Status Section */}
       <section className="space-y-4">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
+        <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
           {translations[language].driveStatus}
         </h4>
-        <Card className="p-4 flex justify-between items-center bg-white border border-slate-200">
+        <Card className="p-4 flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${driveToken ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${driveToken ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
               <Settings size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
                 {driveToken ? translations[language].driveConnected : translations[language].driveDisconnected}
               </p>
-              <p className="text-[10px] text-slate-400 font-medium italic">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium italic">
                 {language === 'he' ? 'שומר חשבוניות בתיקיית RECEIPTS' : 'Saving receipts to RECEIPTS folder'}
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={onReconnectDrive}>
+          <Button variant="outline" size="sm" onClick={onReconnectDrive} className="dark:border-slate-800 dark:text-slate-400">
             {translations[language].reconnectDrive}
           </Button>
         </Card>
@@ -73,49 +73,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Settings Section */}
       <section className="space-y-4">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
+        <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
           {translations[language].accountSettings}
         </h4>
         <div className="space-y-2">
           {deferredPrompt && (
-            <Card className="p-4 flex justify-between items-center bg-emerald-50 border-emerald-100 hover:bg-emerald-100 transition-colors cursor-pointer" onClick={onInstall}>
+            <Card className="p-4 flex justify-between items-center bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer" onClick={onInstall}>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
                   <Settings size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">{translations[language].installApp}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{translations[language].installAppDesc}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{translations[language].installApp}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{translations[language].installAppDesc}</p>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-emerald-300" />
+              <ChevronRight size={18} className="text-emerald-300 dark:text-emerald-700" />
             </Card>
           )}
 
-          <Card className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+          <Card className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
                 <Mail size={20} />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-900">{translations[language].emailNotifications}</p>
-                <p className="text-[10px] text-slate-400 font-medium">{translations[language].enabled}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{translations[language].emailNotifications}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{translations[language].enabled}</p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-slate-300" />
+            <ChevronRight size={18} className="text-slate-300 dark:text-slate-600" />
           </Card>
           
-          <Card className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+          <Card className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
                 <Shield size={20} />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-900">{translations[language].privacySecurity}</p>
-                <p className="text-[10px] text-slate-400 font-medium">{translations[language].managedByGoogle}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{translations[language].privacySecurity}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{translations[language].managedByGoogle}</p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-slate-300" />
+            <ChevronRight size={18} className="text-slate-300 dark:text-slate-600" />
           </Card>
         </div>
       </section>

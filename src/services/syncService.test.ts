@@ -17,7 +17,8 @@ describe('syncService', () => {
     syncToSheets: true,
     spreadsheetId: 'sheet-123',
     spreadsheetName: 'Receipts Database',
-    currency: 'ILS'
+    currency: 'ILS',
+    theme: 'light'
   };
 
   const mockSession: Session = {
@@ -31,6 +32,8 @@ describe('syncService', () => {
     tax: 0,
     tip: 0,
     total: 10,
+    currency: 'ILS' as const,
+    exchangeRate: 1,
     createdAt: new Date().toISOString(),
     imageUrl: 'data:image/jpeg;base64,mock',
     driveFileId: '',
@@ -49,7 +52,7 @@ describe('syncService', () => {
       name: 'Test_Store_20240101_10.00.jpg',
       webViewLink: 'http://link'
     });
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
 
     const result = await syncToCloud(mockSession, mockSettings, mockToken);
 
@@ -78,7 +81,7 @@ describe('syncService', () => {
     const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
     vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue(null);
     vi.mocked(sheetsService.createReceiptsSpreadsheet).mockResolvedValue('new-sheet-456');
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
 
     const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
 
@@ -90,7 +93,7 @@ describe('syncService', () => {
   it('uses existing spreadsheet if found by name', async () => {
     const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
     vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue('existing-sheet-789');
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
 
     const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
 
@@ -101,7 +104,7 @@ describe('syncService', () => {
 
   it('skips Drive upload if already uploaded', async () => {
     const sessionWithDrive = { ...mockSession, driveFileId: 'existing-id' };
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue(undefined);
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
 
     await syncToCloud(sessionWithDrive, mockSettings, mockToken);
 

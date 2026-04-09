@@ -30,6 +30,16 @@ describe('HistoryView', () => {
     translations: translations,
     language: 'en' as const,
     currencySymbol: '$',
+    settings: {
+      storagePath: 'Receipts',
+      directories: { year: true, month: true, day: false },
+      autoSave: true,
+      syncToSheets: true,
+      spreadsheetId: '',
+      spreadsheetName: 'Receipts Database',
+      currency: 'ILS' as const,
+      theme: 'light' as const
+    }
   };
 
   it('renders history items correctly', () => {

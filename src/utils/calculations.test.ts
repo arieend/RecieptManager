@@ -19,6 +19,8 @@ describe('calculateTotals', () => {
     tax: 5,
     tip: 10,
     total: 70,
+    currency: 'ILS' as const,
+    exchangeRate: 1,
     createdAt: new Date().toISOString(),
     imageUrl: '',
     driveFileId: '',

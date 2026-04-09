@@ -37,6 +37,8 @@ describe('SessionView', () => {
     tax: 0,
     tip: 0,
     total: 10,
+    currency: 'USD' as const,
+    exchangeRate: 3.5,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     imageUrl: 'data:image/jpeg;base64,mock',
@@ -55,6 +57,16 @@ describe('SessionView', () => {
     translations: translations,
     language: 'en' as const,
     currencySymbol: '$',
+    settings: {
+      storagePath: 'Receipts',
+      directories: { year: true, month: true, day: false },
+      autoSave: true,
+      syncToSheets: true,
+      spreadsheetId: '',
+      spreadsheetName: 'Receipts Database',
+      currency: 'ILS' as const,
+      theme: 'light' as const
+    }
   };
 
   beforeEach(() => {

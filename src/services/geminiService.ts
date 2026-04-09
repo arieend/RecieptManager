@@ -14,6 +14,8 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
     - items: An array of objects, each with 'name' (string), 'unit_price' (number, the price for a single item), 'quantity' (integer, default to 1 if not clear), 'category' (string, e.g., "Food", "Electronics", "Clothing", "Home"), and 'labels' (array of strings, e.g., ["Grocery", "Dairy", "Snack"]).
     - tax: The tax amount (number).
     - tip: The tip amount (number, if present, otherwise 0).
+    - currency: The currency of the receipt. One of: "ILS", "USD", "EUR". If not clear, default to "ILS".
+    - exchange_rate_to_ils: The current exchange rate from the receipt's currency to Israeli Shekels (ILS). If the currency is ILS, this should be 1.0.
 
     Return ONLY the JSON object.
   `;
@@ -60,14 +62,43 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
             }
           },
           tax: { type: Type.NUMBER },
-          tip: { type: Type.NUMBER }
+          tip: { type: Type.NUMBER },
+          currency: { type: Type.STRING, enum: ["ILS", "USD", "EUR"] },
+          exchange_rate_to_ils: { type: Type.NUMBER }
         },
-        required: ["store_or_brand_name", "store_name_english", "price", "items", "tax", "tip"]
+        required: ["store_or_brand_name", "store_name_english", "price", "items", "tax", "tip", "currency", "exchange_rate_to_ils"]
       }
     }
   });
 
   return JSON.parse(response.text || '{}');
+};
+
+export const getExchangeRate = async (fromCurrency: string, toCurrency: string = 'ILS') => {
+  const model = "gemini-3-flash-preview";
+  const prompt = `What is the current exchange rate from ${fromCurrency} to ${toCurrency}? Return a JSON object with the 'rate' (number). If you are not sure, provide a reasonable recent estimate.`;
+  
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          rate: { type: Type.NUMBER }
+        },
+        required: ["rate"]
+      }
+    }
+  });
+
+  try {
+    const data = JSON.parse(response.text || '{"rate": 1}');
+    return data.rate || 1;
+  } catch (e) {
+    return 1;
+  }
 };
 
 export const interpretChatCommand = async (command: string, items: any[], people: any[]) => {
@@ -81,13 +112,15 @@ export const interpretChatCommand = async (command: string, items: any[], people
     
     Return a JSON object representing the action:
     {
-      "action": "assign" | "add_person" | "add_item" | "unknown",
+      "action": "assign" | "add_person" | "add_item" | "change_currency" | "update_rate" | "unknown",
       "itemId": "string (if assign)",
       "personId": "string (if assign)",
       "personName": "string (if add_person)",
       "itemName": "string (if add_item)",
       "itemPrice": number (if add_item),
-      "itemQuantity": number (if add_item, default to 1)
+      "itemQuantity": number (if add_item, default to 1),
+      "currency": "ILS" | "USD" | "EUR" (if change_currency),
+      "rate": number (if update_rate)
     }
   `;
 

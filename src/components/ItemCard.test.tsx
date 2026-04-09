@@ -23,6 +23,8 @@ describe('ItemCard', () => {
     item: mockItem,
     people: mockPeople,
     currencySymbol: '$',
+    currency: 'USD' as const,
+    exchangeRate: 3.5,
     onToggleAssignment: vi.fn(),
     onUpdateQuantity: vi.fn(),
     translations: translations.en,
