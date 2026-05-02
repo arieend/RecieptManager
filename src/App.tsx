@@ -67,6 +67,8 @@ export default function App() {
   });
   const [settings, setSettings] = useState<StorageSettings>(getSettings());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Modal States
   const [confirmModal, setConfirmModal] = useState<{
@@ -183,6 +185,82 @@ export default function App() {
     localStorage.removeItem('drive_token');
     localStorage.removeItem('drive_token_timestamp');
     setView('main');
+  };
+
+  const handleScan = async () => {
+    setCameraError(null);
+    setIsScanning(true);
+    
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Browser does not support camera access");
+      }
+
+      // Step 1: Request basic video to trigger the permission prompt.
+      // This is the most compatible way to get the browser to ask the user.
+      let stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+      
+      // Step 2: Once permission is granted, we can see device labels.
+      // We try to find the actual back camera.
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        
+        // Look for a device that is likely the back camera
+        const backCamera = videoDevices.find(d => 
+          d.label.toLowerCase().includes('back') || 
+          d.label.toLowerCase().includes('rear') ||
+          d.label.toLowerCase().includes('environment') ||
+          d.label.toLowerCase().includes('0') // Often the main back camera on Android
+        );
+
+        if (backCamera && stream.getVideoTracks()[0].label !== backCamera.label) {
+          // If we found a better camera, stop the current one and switch
+          stream.getTracks().forEach(t => t.stop());
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              deviceId: { exact: backCamera.deviceId },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            },
+            audio: false
+          });
+        } else {
+          // Otherwise, just try to apply environment constraints to the current track
+          const track = stream.getVideoTracks()[0];
+          if (track && track.applyConstraints) {
+            await track.applyConstraints({
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Refining camera constraints failed, using initial stream", e);
+      }
+      
+      setCameraStream(stream);
+    } catch (err: any) {
+      console.error("Camera request failed:", err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.toLowerCase().includes('denied')) {
+        setCameraError(translations[language].cameraPermissionDenied);
+      } else {
+        setCameraError(translations[language].cameraGenericError);
+      }
+    }
+  };
+
+  const closeScanner = () => {
+    setIsScanning(false);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setCameraError(null);
   };
 
   const toggleTheme = () => {
@@ -705,7 +783,7 @@ export default function App() {
               <MainView 
                 user={user} 
                 history={history} 
-                onScan={() => setIsScanning(true)}
+                onScan={handleScan}
                 onUpload={(e) => {
                   const files = Array.from(e.target.files || []);
                   if (files.length > 1) {
@@ -801,12 +879,12 @@ export default function App() {
           {isScanning && (
             <Scanner 
               onCapture={(base64) => {
-                setIsScanning(false);
+                closeScanner();
                 processReceipt(base64);
               }}
-              onClose={() => setIsScanning(false)}
+              onClose={closeScanner}
               onFallback={() => {
-                setIsScanning(false);
+                closeScanner();
                 // Small delay to ensure the Scanner unmounts and the UI is stable
                 // before triggering the file picker, which helps on some mobile browsers.
                 setTimeout(() => {
@@ -814,6 +892,8 @@ export default function App() {
                 }, 100);
               }}
               language={language}
+              initialStream={cameraStream}
+              initialError={cameraError}
             />
           )}
         </AnimatePresence>

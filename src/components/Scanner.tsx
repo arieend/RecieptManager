@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, X, Zap, ZapOff, RefreshCw, Layers, FileText, Check, Plus, Trash2 } from 'lucide-react';
+import { Camera, X, Zap, ZapOff, RefreshCw, Layers, FileText, Check, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { translations } from '../translations';
 import { Cropper } from './Cropper';
@@ -10,13 +10,17 @@ interface ScannerProps {
   onClose: () => void;
   onFallback: () => void;
   language: 'en' | 'he';
+  initialStream?: MediaStream | null;
+  initialError?: string | null;
 }
 
-export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback, language }) => {
+export const Scanner: React.FC<ScannerProps> = ({ 
+  onCapture, onClose, onFallback, language, initialStream, initialError 
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(initialStream || null);
+  const [error, setError] = useState<string | null>(initialError || null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   
@@ -27,12 +31,26 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
 
   const t = translations[language];
 
+  const [hasAttempted, setHasAttempted] = useState(false);
+
+  const [isIframe] = useState(() => window.self !== window.top);
+
   const startCamera = async (mode: 'user' | 'environment') => {
+    // Only skip if we have an initial stream AND we haven't tried to change anything yet
+    if (initialStream && !hasAttempted) {
+      setHasAttempted(true);
+      return;
+    }
+    setHasAttempted(true);
     try {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
       
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Browser does not support camera access");
+      }
+
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: mode,
@@ -41,16 +59,15 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
         },
         audio: false
       });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-      }
+
       setStream(newStream);
       setError(null);
     } catch (err: any) {
       console.error("Camera error:", err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.toLowerCase().includes('denied')) {
         setError(t.cameraPermissionDenied);
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError(language === 'he' ? 'לא נמצאה מצלמה במכשיר זה.' : 'No camera found on this device.');
       } else if (err.message?.toLowerCase().includes('dismissed')) {
         setError(t.cameraPermissionDismissed);
       } else {
@@ -59,8 +76,20 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
     }
   };
 
+  // Separate effect for attaching stream to video element
   useEffect(() => {
-    startCamera(facingMode);
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  useEffect(() => {
+    if (initialStream) {
+      setStream(initialStream);
+    } else if (!error) {
+      startCamera(facingMode);
+    }
+    
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -134,6 +163,20 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleNativeCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        onCapture(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -141,6 +184,14 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-black flex flex-col"
     >
+      <input 
+        ref={fileInputRef}
+        type="file" 
+        accept="image/*" 
+        capture="environment" 
+        className="hidden" 
+        onChange={handleNativeCapture}
+      />
       {/* Cropper Overlay (if active) */}
       <AnimatePresence>
         {currentCapture && (
@@ -196,27 +247,57 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
       {/* Camera View (always mounted but hidden if cropper is active) */}
       <div className={`flex-1 relative overflow-hidden flex items-center justify-center ${currentCapture ? 'invisible' : 'visible'}`}>
         {error ? (
-          <div className="p-8 text-center text-white flex flex-col gap-6 max-w-sm">
-            <div className="space-y-2">
-              <p className="text-lg font-bold text-red-400">{error}</p>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                {t.howToEnableCamera}
-              </p>
+          <div className="p-8 text-center text-white flex flex-col gap-8 max-w-sm">
+            <div className="space-y-6">
+              <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={40} className="text-red-500" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-xl font-black text-white tracking-tight italic uppercase">
+                  {language === 'he' ? 'שגיאת מצלמה' : 'Camera Error'}
+                </p>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  {error}
+                </p>
+              </div>
+
+              {isIframe && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-left space-y-3">
+                  <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                    <Zap size={14} />
+                    {language === 'he' ? 'פתרון מהיר' : 'Quick Fix'}
+                  </p>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {language === 'he' 
+                      ? 'דפדפנים לעיתים חוסמים גישה למצלמה בתוך תצוגה מקדימה. פתיחת האפליקציה בלשונית חדשה פותרת זאת בדרך כלל.' 
+                      : 'Browsers often block camera access in preview mode. Opening the app in a new tab usually fixes this.'}
+                  </p>
+                  <button 
+                    onClick={() => window.open(window.location.href, '_blank')}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw size={14} />
+                    {language === 'he' ? 'פתח בלשונית חדשה' : 'Open in New Tab'}
+                  </button>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col gap-3">
-              <button 
+              <Button 
+                variant="primary" 
                 onClick={() => startCamera(facingMode)}
-                className="px-6 py-3 bg-emerald-600 rounded-xl font-bold shadow-lg shadow-emerald-900/20 active:scale-95 transition-all"
+                className="w-full"
               >
                 {language === 'he' ? 'נסה שוב' : 'Try Again'}
-              </button>
-              <button 
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={onFallback}
-                className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-colors"
+                className="w-full border-white/20 text-white hover:bg-white/10"
               >
-                {language === 'he' ? 'השתמש במצלמת המערכת' : 'Use System Camera'}
-              </button>
+                {language === 'he' ? 'בחר קובץ מהגלריה' : 'Choose from Gallery'}
+              </Button>
             </div>
           </div>
         ) : (
@@ -225,6 +306,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCapture, onClose, onFallback
               ref={videoRef} 
               autoPlay 
               playsInline 
+              muted
               onLoadedMetadata={() => setIsCameraReady(true)}
               className="w-full h-full object-cover"
             />
