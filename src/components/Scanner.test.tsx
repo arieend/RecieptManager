@@ -80,7 +80,7 @@ describe('Scanner', () => {
       expect(screen.getByText(translations.en.cameraPermissionDenied)).toBeInTheDocument();
     });
 
-    const fallbackBtn = screen.getByText(/Use System Camera/i);
+    const fallbackBtn = screen.getByText(/Choose from Gallery/i);
     fireEvent.click(fallbackBtn);
     expect(mockProps.onFallback).toHaveBeenCalled();
   });

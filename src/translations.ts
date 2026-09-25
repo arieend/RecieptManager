@@ -147,6 +147,45 @@ export interface Translations {
   of: string;
   processFolder: string;
   selectFiles: string;
+  reviewStep: string;
+  isDataCorrect: string;
+  rescan: string;
+  manualEdit: string;
+  ok: string;
+  transactionDate: string;
+  editStoreName: string;
+  monthlySummary: string;
+  monthlySummaryDesc: string;
+  selectMonth: string;
+  allTime: string;
+  last6Months: string;
+  last12Months: string;
+  monthlyTrends: string;
+  categoryDistribution: string;
+  dailySpending: string;
+  topCategory: string;
+  totalSpending: string;
+  avgReceipt: string;
+  receiptsCount: string;
+  vsPreviousMonth: string;
+  noExpensesForPeriod: string;
+  viewReceipt: string;
+  stackedView: string;
+  totalTrend: string;
+  spendingVelocity: string;
+  searchExpenses: string;
+  allItemsInCat: string;
+  monthlySummaryNav: string;
+  currencyView: string;
+  allCategories: string;
+  itemsPurchased: string;
+  selectYear: string;
+  allYears: string;
+  allMonthsInYear: string;
+  fullYear: string;
+  thisMonth: string;
+  customPeriod: string;
+  vsPreviousYear: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -297,6 +336,45 @@ export const translations: Record<Language, Translations> = {
     of: "of",
     processFolder: "Process Folder",
     selectFiles: "Select Files",
+    reviewStep: "Review Parsed Data",
+    isDataCorrect: "Is the parsed data correct?",
+    rescan: "Rescan",
+    manualEdit: "Manual Edit",
+    ok: "Confirm",
+    transactionDate: "Transaction Date",
+    editStoreName: "Edit Store Name",
+    monthlySummary: "Monthly Summary",
+    monthlySummaryDesc: "Expense trends and category breakdown over time",
+    selectMonth: "Select Month",
+    allTime: "All Time",
+    last6Months: "Last 6 Months",
+    last12Months: "Last 12 Months",
+    monthlyTrends: "Monthly Trends",
+    categoryDistribution: "Category Distribution",
+    dailySpending: "Daily Spending",
+    topCategory: "Top Category",
+    totalSpending: "Total Spending",
+    avgReceipt: "Average Receipt",
+    receiptsCount: "Receipts",
+    vsPreviousMonth: "vs previous month",
+    noExpensesForPeriod: "No expenses recorded for this period.",
+    viewReceipt: "View Receipt",
+    stackedView: "Category Stacked",
+    totalTrend: "Total Trend",
+    spendingVelocity: "Spending Velocity",
+    searchExpenses: "Search items or stores...",
+    allItemsInCat: "Items in this category",
+    monthlySummaryNav: "Monthly Summary",
+    currencyView: "Currency View",
+    allCategories: "All Categories",
+    itemsPurchased: "Items",
+    selectYear: "Select Year",
+    allYears: "All Years",
+    allMonthsInYear: "All Months (Full Year)",
+    fullYear: "Full Year",
+    thisMonth: "This Month",
+    customPeriod: "Choose Month & Year",
+    vsPreviousYear: "vs previous year",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -445,5 +523,44 @@ export const translations: Record<Language, Translations> = {
     of: "מתוך",
     processFolder: "עבד תיקייה",
     selectFiles: "בחר קבצים",
+    reviewStep: "ביקורת נתונים",
+    isDataCorrect: "האם הנתונים נכונים?",
+    rescan: "סרוק שוב",
+    manualEdit: "עריכה ידנית",
+    ok: "אישור",
+    transactionDate: "תאריך עסקה",
+    editStoreName: "ערוך שם חנות",
+    monthlySummary: "סיכום חודשי",
+    monthlySummaryDesc: "מגמות הוצאות והתפלגות לפי קטגוריות לאורך זמן",
+    selectMonth: "בחר חודש",
+    allTime: "כל הזמנים",
+    last6Months: "6 חודשים אחרונים",
+    last12Months: "12 חודשים אחרונים",
+    monthlyTrends: "מגמות חודשיות",
+    categoryDistribution: "התפלגות לפי קטגוריות",
+    dailySpending: "הוצאות יומיות",
+    topCategory: "קטגוריה מובילה",
+    totalSpending: "סך כל ההוצאות",
+    avgReceipt: "ממוצע לקבלה",
+    receiptsCount: "קבלות",
+    vsPreviousMonth: "לעומת חודש קודם",
+    noExpensesForPeriod: "לא נרשמו הוצאות לתקופה זו.",
+    viewReceipt: "צפה בקבלה",
+    stackedView: "מצטבר לפי קטגוריה",
+    totalTrend: "מגמה כוללת",
+    spendingVelocity: "קצב הוצאות",
+    searchExpenses: "חיפוש פריטים או חנויות...",
+    allItemsInCat: "פריטים בקטגוריה זו",
+    monthlySummaryNav: "סיכום חודשי",
+    currencyView: "תצוגת מטבע",
+    allCategories: "כל הקטגוריות",
+    itemsPurchased: "פריטים",
+    selectYear: "בחר שנה",
+    allYears: "כל השנים",
+    allMonthsInYear: "כל החודשים (שנה שלמה)",
+    fullYear: "שנה שלמה",
+    thisMonth: "חודש נוכחי",
+    customPeriod: "בחר שנה וחודש",
+    vsPreviousYear: "לעומת שנה קודמת",
   }
 };

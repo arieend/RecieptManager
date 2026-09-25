@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, LogOut, Settings, Table, Sun, Moon, Cloud, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { User, LogOut, Settings, Table, Sun, Moon, Cloud, CloudOff, RefreshCw, AlertCircle, TrendingUp } from 'lucide-react';
 import { Button } from './ui/Base';
 import { IsraelFlag, USFlag } from './Flags';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   setLanguage: (lang: 'en' | 'he') => void;
   onProfileClick: () => void;
   onSettingsClick: () => void;
+  onMonthlySummaryClick?: () => void;
   onLogout: () => void;
   translations: any;
   spreadsheetId?: string;
@@ -22,7 +23,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  user, language, setLanguage, onProfileClick, onSettingsClick, onLogout, translations, spreadsheetId, spreadsheetName, driveToken, onReconnectDrive, onCreateSpreadsheet, isCreatingSpreadsheet, theme, onToggleTheme 
+  user, language, setLanguage, onProfileClick, onSettingsClick, onMonthlySummaryClick, onLogout, translations, spreadsheetId, spreadsheetName, driveToken, onReconnectDrive, onCreateSpreadsheet, isCreatingSpreadsheet, theme, onToggleTheme 
 }) => {
   const spreadsheetLink = spreadsheetId 
     ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`
@@ -113,6 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
           size="icon" 
           onClick={() => setLanguage(language === 'en' ? 'he' : 'en')}
           className="text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          title="Toggle Language"
         >
           {language === 'en' ? <IsraelFlag /> : <USFlag />}
         </Button>
@@ -122,6 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button 
               onClick={onProfileClick}
               className="w-10 h-10 rounded-2xl overflow-hidden border-2 border-emerald-100 dark:border-emerald-900 hover:border-emerald-500 transition-all shadow-sm"
+              aria-label="Profile"
             >
               {user.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -131,11 +134,23 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
             </button>
+            {onMonthlySummaryClick && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onMonthlySummaryClick}
+                className="text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400"
+                title={translations[language].monthlySummary}
+              >
+                <TrendingUp size={20} />
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={onSettingsClick}
               className="text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400"
+              title="Settings"
             >
               <Settings size={20} />
             </Button>
@@ -144,6 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
               size="icon" 
               onClick={onLogout}
               className="text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+              title="Logout"
             >
               <LogOut size={20} />
             </Button>

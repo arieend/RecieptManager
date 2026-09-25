@@ -64,7 +64,7 @@ describe('syncService', () => {
       'sheet-123',
       expect.arrayContaining([
         expect.arrayContaining([
-          expect.stringMatching(/^\d{2}\/\d{2}\/\d{4}$/),
+          expect.stringMatching(/^'?\d{2}\/\d{2}\/\d{4}$/),
           'Test Store',
           'Item 1',
           10,

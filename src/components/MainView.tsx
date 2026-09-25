@@ -1,9 +1,9 @@
 import React from 'react';
-import { Camera, FileUp, History, AlertCircle, ExternalLink } from 'lucide-react';
+import { Camera, FileUp, History, AlertCircle, ExternalLink, TrendingUp, PieChart, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { translations } from '../translations';
 import { Session } from '../types';
-import { StorageSettings } from '../services/configService';
+import { StorageSettings, getCurrencySymbol } from '../services/configService';
 import { Button } from './ui/Base';
 
 interface MainViewProps {
@@ -15,6 +15,7 @@ interface MainViewProps {
   onHistoryClick: () => void;
   onSessionClick: (session: Session) => void;
   onSettingsClick: () => void;
+  onMonthlySummaryClick?: () => void;
   translations: any;
   language: 'en' | 'he';
   currencySymbol: string;
@@ -24,11 +25,19 @@ interface MainViewProps {
 }
 
 export const MainView: React.FC<MainViewProps> = ({
-  user, history, onScan, onUpload, onUploadFolder, onHistoryClick, onSessionClick, onSettingsClick, language, currencySymbol, driveToken, onReconnectDrive, settings
+  user, history, onScan, onUpload, onUploadFolder, onHistoryClick, onSessionClick, onSettingsClick, onMonthlySummaryClick, language, currencySymbol, driveToken, onReconnectDrive, settings
 }) => {
   const spreadsheetLink = settings.spreadsheetId 
     ? `https://docs.google.com/spreadsheets/d/${settings.spreadsheetId}/edit`
     : null;
+
+  // Calculate current month total for quick glimpse
+  const currentMonthTotal = React.useMemo(() => {
+    const now = new Date();
+    const currentPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const thisMonthSessions = history.filter(s => s.createdAt && s.createdAt.startsWith(currentPrefix));
+    return thisMonthSessions.reduce((sum, s) => sum + (Number(s.total) || 0) * (s.currency === 'USD' ? (s.exchangeRate || 3.7) : s.currency === 'EUR' ? (s.exchangeRate || 4.0) : 1), 0);
+  }, [history]);
 
   return (
     <main className="flex-1 p-6 space-y-8 max-w-2xl mx-auto w-full">
@@ -128,7 +137,7 @@ export const MainView: React.FC<MainViewProps> = ({
                     {language === 'he' ? session.storeName : (session.englishStoreName || session.storeName)}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { 
+                    {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB', { 
                       month: 'short', 
                       day: 'numeric',
                       hour: '2-digit',
@@ -137,7 +146,7 @@ export const MainView: React.FC<MainViewProps> = ({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-black text-slate-900 dark:text-white">{currencySymbol}{session.total.toFixed(2)}</p>
+                  <p className="font-black text-slate-900 dark:text-white">{getCurrencySymbol(session.currency)}{session.total.toFixed(2)}</p>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">{session.items.length} {translations[language].items}</p>
                 </div>
               </motion.button>
@@ -155,12 +164,37 @@ export const MainView: React.FC<MainViewProps> = ({
 
       {/* Quick Actions / Status */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {onMonthlySummaryClick && (
+          <button 
+            onClick={onMonthlySummaryClick}
+            className="p-6 bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-[2.5rem] flex flex-col gap-4 hover:from-emerald-700 hover:to-teal-800 transition-all shadow-lg shadow-emerald-500/20 group text-left rtl:text-right"
+          >
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <TrendingUp size={24} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full flex items-center gap-1">
+                <PieChart size={12} />
+                Analytics
+              </span>
+            </div>
+            <div>
+              <p className="font-black text-lg leading-tight italic uppercase">{translations[language].monthlySummary}</p>
+              <p className="text-xs text-white/80 font-bold">
+                {currentMonthTotal > 0 
+                  ? `${currencySymbol}${currentMonthTotal.toFixed(2)} ${translations[language].totalSpending.toLowerCase()}`
+                  : translations[language].monthlySummaryDesc}
+              </p>
+            </div>
+          </button>
+        )}
+
         {spreadsheetLink && (
           <a 
             href={spreadsheetLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-6 bg-emerald-600 text-white rounded-[2.5rem] flex flex-col gap-4 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 group"
+            className="p-6 bg-slate-800 dark:bg-slate-800 text-white rounded-[2.5rem] flex flex-col gap-4 hover:bg-slate-700 transition-all shadow-lg shadow-slate-200 dark:shadow-slate-900/20 group"
           >
             <div className="flex justify-between items-start">
               <div className="p-3 bg-white/20 rounded-2xl">

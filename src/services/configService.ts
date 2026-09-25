@@ -87,7 +87,7 @@ export const formatDateTimeForFilename = (date: Date): string => {
 
 export const formatDateForSheets = (date: Date): string => {
   const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+  return `'${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 };
 
 export const buildDirectoryPath = (settings: StorageSettings, date: Date): string[] => {

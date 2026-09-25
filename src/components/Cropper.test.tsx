@@ -16,12 +16,27 @@ describe('Cropper', () => {
     
     // Mock Image
     global.Image = class {
-      onload: () => void = () => {};
-      src: string = '';
+      _onload: () => void = () => {};
+      _src: string = '';
       width: number = 1000;
       height: number = 1000;
-      constructor() {
-        setTimeout(() => this.onload(), 10);
+      crossOrigin: string = '';
+
+      get onload() {
+        return this._onload;
+      }
+      set onload(cb) {
+        this._onload = cb;
+      }
+
+      get src() {
+        return this._src;
+      }
+      set src(val) {
+        this._src = val;
+        if (this._onload) {
+          this._onload();
+        }
       }
     } as any;
   });

@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, X, Zap, ZapOff, RefreshCw, Layers, FileText, Check, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Camera, X, Zap, ZapOff, RefreshCw, Layers, FileText, Check, Plus, Trash2, AlertCircle, Crop } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { translations } from '../translations';
 import { Cropper } from './Cropper';
 import { Button } from './ui/Base';
+import { detectReceipt, cropImageToBoundary } from '../utils/autocrop';
 
 interface ScannerProps {
   onCapture: (base64: string) => void;
@@ -28,6 +29,7 @@ export const Scanner: React.FC<ScannerProps> = ({
   const [capturedParts, setCapturedParts] = useState<string[]>([]);
   const [currentCapture, setCurrentCapture] = useState<string | null>(null);
   const [isStitching, setIsStitching] = useState(false);
+  const [isAutoCrop, setIsAutoCrop] = useState(true);
 
   const t = translations[language];
 
@@ -97,7 +99,7 @@ export const Scanner: React.FC<ScannerProps> = ({
     };
   }, [facingMode]);
 
-  const capture = () => {
+  const capture = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -206,6 +208,7 @@ export const Scanner: React.FC<ScannerProps> = ({
               onCrop={handleCrop} 
               onCancel={() => setCurrentCapture(null)} 
               language={language} 
+              autoDetectEnabled={isAutoCrop}
             />
           </motion.div>
         )}
@@ -222,6 +225,17 @@ export const Scanner: React.FC<ScannerProps> = ({
             <X size={24} />
           </button>
           <div className="flex gap-4">
+            <button 
+              onClick={() => setIsAutoCrop(!isAutoCrop)}
+              className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 ${isAutoCrop ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'bg-white/10 text-white hover:bg-white/20'}`}
+              title={isAutoCrop ? t.smartCrop : t.manualCrop}
+              aria-label={isAutoCrop ? "Auto-Crop On" : "Auto-Crop Off"}
+            >
+              <Crop size={20} />
+              <span className="text-xs font-bold hidden sm:inline">
+                {isAutoCrop ? t.smartCrop : t.manualCrop}
+              </span>
+            </button>
             <button 
               onClick={() => setIsLongReceiptMode(!isLongReceiptMode)}
               className={`p-2 rounded-full transition-colors flex items-center gap-2 px-4 ${isLongReceiptMode ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}

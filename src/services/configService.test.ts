@@ -56,10 +56,10 @@ describe('configService', () => {
 
   it('formats date for sheets correctly', () => {
     const date = new Date(2024, 0, 1); // Jan 1, 2024
-    expect(formatDateForSheets(date)).toBe('01/01/2024');
+    expect(formatDateForSheets(date)).toBe("'01/01/2024");
     
     const date2 = new Date(2024, 11, 31); // Dec 31, 2024
-    expect(formatDateForSheets(date2)).toBe('31/12/2024');
+    expect(formatDateForSheets(date2)).toBe("'31/12/2024");
   });
 
   it('builds directory path correctly', () => {

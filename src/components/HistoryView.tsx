@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, History, Trash2, ChevronRight, Calendar, Receipt, Table } from 'lucide-react';
+import { ArrowLeft, History, Trash2, ChevronRight, Calendar, Receipt, Table, TrendingUp } from 'lucide-react';
 import { Button, Card } from './ui/Base';
 import { ConfirmModal } from './Modal';
 import { StorageSettings } from '../services/configService';
@@ -10,6 +10,7 @@ interface HistoryViewProps {
   onSessionClick: (session: any) => void;
   onDeleteSession: (id: string) => void;
   onClearAll: () => void;
+  onMonthlySummaryClick?: () => void;
   translations: any;
   language: 'en' | 'he';
   currencySymbol: string;
@@ -17,7 +18,7 @@ interface HistoryViewProps {
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ 
-  history, onBack, onSessionClick, onDeleteSession, onClearAll, translations, language, currencySymbol, settings 
+  history, onBack, onSessionClick, onDeleteSession, onClearAll, onMonthlySummaryClick, translations, language, currencySymbol, settings 
 }) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -28,7 +29,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   return (
     <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center sticky top-0 z-30">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-2">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft size={20} />
@@ -39,6 +40,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </h2>
         </div>
         <div className="flex items-center gap-2">
+          {onMonthlySummaryClick && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onMonthlySummaryClick}
+              className="text-emerald-600 border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900 font-bold"
+              leftIcon={<TrendingUp size={16} />}
+            >
+              {translations[language].monthlySummary}
+            </Button>
+          )}
           {spreadsheetLink && (
             <Button 
               variant="outline" 
@@ -95,7 +107,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     <Receipt size={12} />
                     <span>{session.items?.length || 0} {translations[language].items}</span>
                     <span>•</span>
-                    <span>{new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US')}</span>
+                    <span>{new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB')}</span>
                   </div>
                 </div>
               </div>

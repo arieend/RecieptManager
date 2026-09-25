@@ -60,9 +60,10 @@ describe('MainView', () => {
 
   it('shows drive warning when driveToken is missing', () => {
     render(<MainView {...mockProps} driveToken={null} />);
-    expect(screen.getByText(/Google Drive Disconnected/i)).toBeInTheDocument();
-    const reconnectBtn = screen.getByRole('button', { name: /Connect Google Drive/i });
-    fireEvent.click(reconnectBtn);
+    expect(screen.getByText(/Connect Google Drive/i)).toBeInTheDocument();
+    const reconnectBtn = screen.getByText(/Connect Google Drive/i).closest('button');
+    expect(reconnectBtn).toBeInTheDocument();
+    fireEvent.click(reconnectBtn!);
     expect(mockProps.onReconnectDrive).toHaveBeenCalled();
   });
 

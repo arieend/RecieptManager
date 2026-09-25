@@ -30,16 +30,20 @@ import { SessionView } from './components/SessionView';
 import { HistoryView } from './components/HistoryView';
 import { ProfileView } from './components/ProfileView';
 import { ConfirmModal } from './components/Modal';
+import { ParsingReview } from './components/ParsingReview';
+import { MonthlySummaryView } from './components/MonthlySummaryView';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [language, setLanguage] = useState<Language>('en');
-  const [view, setView] = useState<'main' | 'history' | 'profile' | 'session'>('main');
+  const [view, setView] = useState<'main' | 'history' | 'profile' | 'session' | 'review' | 'monthlySummary'>('main');
   const [isScanning, setIsScanning] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [history, setHistory] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [reviewSession, setReviewSession] = useState<Session | null>(null);
+  const [lastOriginalExtension, setLastOriginalExtension] = useState<string>('jpg');
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
@@ -106,8 +110,7 @@ export default function App() {
         const q = query(
           collection(db, 'sessions'),
           where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc'),
-          limit(50)
+          orderBy('createdAt', 'desc')
         );
         unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
           const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
@@ -337,7 +340,35 @@ export default function App() {
 
       if (result.transaction_datetime) {
         try {
-          const extractedDate = new Date(result.transaction_datetime);
+          let dateStrRaw = result.transaction_datetime.trim();
+          let parsedDate: Date | null = null;
+          
+          // Custom parsing to handle DD/MM/YYYY vs YYYY-MM-DD
+          let datePart = dateStrRaw;
+          let timePart = "12:00:00";
+          if (dateStrRaw.includes(' ')) {
+            const parts = dateStrRaw.split(' ');
+            datePart = parts[0];
+            timePart = parts[1];
+          } else if (dateStrRaw.includes('T')) {
+            const parts = dateStrRaw.split('T');
+            datePart = parts[0];
+            timePart = parts[1];
+          }
+
+          if (datePart.includes('/')) {
+            const dp = datePart.split('/');
+            if (dp.length === 3) {
+              if (dp[2].length === 4) { // DD/MM/YYYY
+                parsedDate = new Date(`${dp[2]}-${dp[1].padStart(2, '0')}-${dp[0].padStart(2, '0')}T${timePart}`);
+              } else if (dp[0].length === 4) { // YYYY/MM/DD
+                parsedDate = new Date(`${dp[0]}-${dp[1].padStart(2, '0')}-${dp[2].padStart(2, '0')}T${timePart}`);
+              }
+            }
+          }
+
+          const extractedDate = parsedDate || new Date(dateStrRaw.replace(' ', 'T') + (dateStrRaw.length <= 10 ? 'T12:00:00' : ''));
+          
           if (!isNaN(extractedDate.getTime())) {
             createdAt = extractedDate.toISOString();
             transactionDate = extractedDate;
@@ -377,17 +408,11 @@ export default function App() {
         imageUrl: base64
       };
 
-      setCurrentSession(newSession);
-      setView('session');
+      setReviewSession(newSession);
+      setLastOriginalExtension(originalExtension);
+      setView('review');
 
-      // Auto-save if enabled
-      if (settings.autoSave && user) {
-        // We need to pass the extension for the auto-save
-        saveSession(newSession, originalExtension).catch(err => {
-          console.error("Auto-save failed:", err);
-          setShowToast(language === 'he' ? 'שגיאה בשמירה אוטומטית' : 'Auto-save failed');
-        });
-      }
+      // Auto-save logic is moved to handleConfirmReview
     } catch (error: any) {
       console.error("Receipt processing error:", error);
       // Check if it's a Gemini error or something else
@@ -435,7 +460,34 @@ export default function App() {
         let createdAt = new Date().toISOString();
         if (result.transaction_datetime) {
           try {
-            const extractedDate = new Date(result.transaction_datetime);
+            let dateStrRaw = result.transaction_datetime.trim();
+            let parsedDate: Date | null = null;
+
+            let datePart = dateStrRaw;
+            let timePart = "12:00:00";
+            if (dateStrRaw.includes(' ')) {
+              const parts = dateStrRaw.split(' ');
+              datePart = parts[0];
+              timePart = parts[1];
+            } else if (dateStrRaw.includes('T')) {
+              const parts = dateStrRaw.split('T');
+              datePart = parts[0];
+              timePart = parts[1];
+            }
+
+            if (datePart.includes('/')) {
+              const dp = datePart.split('/');
+              if (dp.length === 3) {
+                if (dp[2].length === 4) { // DD/MM/YYYY
+                  parsedDate = new Date(`${dp[2]}-${dp[1].padStart(2, '0')}-${dp[0].padStart(2, '0')}T${timePart}`);
+                } else if (dp[0].length === 4) { // YYYY/MM/DD
+                  parsedDate = new Date(`${dp[0]}-${dp[1].padStart(2, '0')}-${dp[2].padStart(2, '0')}T${timePart}`);
+                }
+              }
+            }
+
+            const extractedDate = parsedDate || new Date(dateStrRaw.replace(' ', 'T') + (dateStrRaw.length <= 10 ? 'T12:00:00' : ''));
+
             if (!isNaN(extractedDate.getTime())) {
               createdAt = extractedDate.toISOString();
             }
@@ -624,6 +676,30 @@ export default function App() {
     });
   };
 
+  const handleConfirmReview = (session: Session) => {
+    setCurrentSession(session);
+    setView('session');
+    setReviewSession(null);
+    
+    // Auto-save if enabled
+    if (settings.autoSave && user) {
+      saveSession(session, lastOriginalExtension).catch(err => {
+        console.error("Auto-save failed:", err);
+        setShowToast(language === 'he' ? 'שגיאה בשמירה אוטומטית' : 'Auto-save failed');
+      });
+    }
+  };
+
+  const handleRescanReview = () => {
+    setReviewSession(null);
+    setView('main');
+    handleScan();
+  };
+
+  const handleCancelReview = () => {
+    setReviewSession(null);
+    setView('main');
+  };
   const handleChatCommand = async (command: string) => {
     if (!command.trim() || !currentSession || isProcessingChat) return;
 
@@ -745,6 +821,7 @@ export default function App() {
           setLanguage={setLanguage} 
           onProfileClick={() => setView('profile')}
           onSettingsClick={() => setIsSettingsOpen(true)}
+          onMonthlySummaryClick={() => setView('monthlySummary')}
           onLogout={handleLogout}
           translations={translations}
           spreadsheetId={settings.spreadsheetId}
@@ -799,6 +876,7 @@ export default function App() {
                   processBatch(files);
                 }}
                 onHistoryClick={() => setView('history')}
+                onMonthlySummaryClick={() => setView('monthlySummary')}
                 onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
                 onSettingsClick={() => setIsSettingsOpen(true)}
                 translations={translations}
@@ -828,11 +906,26 @@ export default function App() {
             </motion.div>
           )}
 
+          {view === 'review' && reviewSession && (
+            <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+              <ParsingReview 
+                session={reviewSession}
+                onConfirm={handleConfirmReview}
+                onRescan={handleRescanReview}
+                onCancel={handleCancelReview}
+                language={language}
+                translations={translations}
+                currencySymbol={currencySymbol}
+              />
+            </motion.div>
+          )}
+
           {view === 'history' && (
             <motion.div key="history" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex-1 flex flex-col">
               <HistoryView 
                 history={history}
                 onBack={() => setView('main')}
+                onMonthlySummaryClick={() => setView('monthlySummary')}
                 onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
                 onDeleteSession={(id) => deleteSession(id)}
                 onClearAll={async () => {
@@ -840,6 +933,21 @@ export default function App() {
                     await deleteDoc(doc(db, 'sessions', session.id));
                   }
                 }}
+                translations={translations}
+                language={language}
+                currencySymbol={currencySymbol}
+                settings={settings}
+              />
+            </motion.div>
+          )}
+
+          {view === 'monthlySummary' && (
+            <motion.div key="monthlySummary" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+              <MonthlySummaryView
+                history={history}
+                onBack={() => setView('main')}
+                onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
+                onScanClick={() => { setView('main'); setIsScanning(true); }}
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}

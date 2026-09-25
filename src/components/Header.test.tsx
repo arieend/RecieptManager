@@ -29,9 +29,8 @@ describe('Header', () => {
 
   it('calls setLanguage when language toggle is clicked', () => {
     render(<Header {...mockProps} />);
-    const buttons = screen.getAllByRole('button');
-    // The first button is the language toggle
-    fireEvent.click(buttons[0]);
+    const langBtn = screen.getByRole('button', { name: /Toggle Language/i });
+    fireEvent.click(langBtn);
     expect(mockProps.setLanguage).toHaveBeenCalledWith('he');
   });
 
@@ -44,17 +43,15 @@ describe('Header', () => {
 
   it('calls onSettingsClick when settings icon is clicked', () => {
     render(<Header {...mockProps} />);
-    const buttons = screen.getAllByRole('button');
-    // Settings is the 3rd button (Toggle, Profile, Settings, Logout)
-    fireEvent.click(buttons[2]);
+    const settingsBtn = screen.getByRole('button', { name: /Settings/i });
+    fireEvent.click(settingsBtn);
     expect(mockProps.onSettingsClick).toHaveBeenCalled();
   });
 
   it('calls onLogout when logout icon is clicked', () => {
     render(<Header {...mockProps} />);
-    const buttons = screen.getAllByRole('button');
-    // Logout is the 4th button
-    fireEvent.click(buttons[3]);
+    const logoutBtn = screen.getByRole('button', { name: /Logout/i });
+    fireEvent.click(logoutBtn);
     expect(mockProps.onLogout).toHaveBeenCalled();
   });
 

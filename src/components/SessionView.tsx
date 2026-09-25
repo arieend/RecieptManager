@@ -219,7 +219,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
               )}
             </h2>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-              {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US')}
+              {new Date(session.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB')}
             </p>
           </div>
         </div>

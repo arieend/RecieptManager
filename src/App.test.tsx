@@ -32,10 +32,13 @@ vi.mock('firebase/auth', () => ({
   },
   signInWithPopup: vi.fn(),
   signOut: vi.fn(),
+  setPersistence: vi.fn(() => Promise.resolve()),
+  browserLocalPersistence: 'browserLocalPersistence',
 }));
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
+  initializeFirestore: vi.fn(),
   collection: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
@@ -167,9 +170,12 @@ describe('App Camera Functionality', () => {
       expect(screen.getByText(/Parsing Receipt|מנתח קבלה/i)).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Wait for the summary view to appear (mocked Gemini response)
-    // The store name should be "Mock Store"
-    const summaryHeader = await screen.findByText(/Mock Store/i, {}, { timeout: 5000 });
-    expect(summaryHeader).toBeInTheDocument();
+    // Wait for the review view to appear (mocked Gemini response)
+    // First, verify the review step header is visible
+    expect(await screen.findByText(/Review Parsed Data|ביקורת נתונים/i, {}, { timeout: 5000 })).toBeInTheDocument();
+    
+    // The store name should be inside the input field
+    const storeInput = await screen.findByDisplayValue(/Mock Store/i, {}, { timeout: 3000 });
+    expect(storeInput).toBeInTheDocument();
   });
 });
