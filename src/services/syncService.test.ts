@@ -102,6 +102,26 @@ describe('syncService', () => {
     expect(sheetsService.createReceiptsSpreadsheet).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['data:image/jpeg;base64,abc', 'jpg', 'image/jpeg'],
+    ['data:application/pdf;base64,abc', 'pdf', 'application/pdf'],
+    ['data:image/heic;base64,abc', 'heic', 'image/heic'],
+    ['data:image/png;base64,abc', 'png', 'image/png'],
+  ])('uploads %s to Drive as .%s with type %s', async (imageUrl, extension, mimeType) => {
+    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
+    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({ id: 'file-123', name: 'x' });
+
+    await syncToCloud({ ...mockSession, imageUrl }, { ...mockSettings, syncToSheets: false }, mockToken);
+
+    expect(driveService.uploadFileToDrive).toHaveBeenCalledWith(
+      mockToken,
+      'folder-123',
+      expect.stringMatching(new RegExp(`\\.${extension}$`)),
+      imageUrl,
+      mimeType
+    );
+  });
+
   it('skips Drive upload if already uploaded', async () => {
     const sessionWithDrive = { ...mockSession, driveFileId: 'existing-id' };
     vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');

@@ -39,6 +39,13 @@ We test pure functions and business logic in isolation.
 - **Mocks**: We mock external APIs (Firebase, Google APIs) to ensure tests are fast and deterministic.
 - **Coverage**: We aim for 100% coverage on all service functions and utility helpers.
 
+### Recorded Gemini responses
+Receipt intake tests run over every real Gemini response saved in `src/services/__fixtures__/gemini/`. To add one (needs `GEMINI_API_KEY` in `.env`):
+```bash
+npm run capture:gemini -- path/to/receipt.jpg hebrew-supermarket
+```
+Check the JSON before committing: it contains real receipt data.
+
 ### Component Tests (`components`)
 We test UI components by simulating user interactions and asserting on the rendered output.
 - **Mocking `motion`**: We mock the `motion` library to avoid animation-related issues in tests.

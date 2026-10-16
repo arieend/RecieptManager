@@ -1,6 +1,7 @@
 import { Session, Person, ReceiptItem } from '../types';
 import { StorageSettings, buildDirectoryPath, formatDateTimeForFilename, sanitizeFilename, formatDateForSheets } from './configService';
 import { getOrCreateFolderPath, uploadFileToDrive, findSpreadsheetByName } from './driveService';
+import { mimeTypeOf, extensionOf } from '../utils/imageUtils';
 import { createReceiptsSpreadsheet, appendToSpreadsheet, detectSpreadsheetDateFormat, ensureDateColumnFormat, SheetDateFormatInfo } from './sheetsService';
 
 export interface SyncResult {
@@ -15,8 +16,7 @@ export interface SyncResult {
 export const syncToCloud = async (
   session: Session,
   settings: StorageSettings,
-  driveToken: string,
-  forceExtension?: string
+  driveToken: string
 ): Promise<SyncResult> => {
   const result: SyncResult = {};
   
@@ -27,8 +27,8 @@ export const syncToCloud = async (
       const folderPath = buildDirectoryPath(settings, date);
       const folderId = await getOrCreateFolderPath(driveToken, folderPath);
       
-      const mimeType = session.imageUrl.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg';
-      const extension = forceExtension || (mimeType === 'application/pdf' ? 'pdf' : 'jpg');
+      const mimeType = mimeTypeOf(session.imageUrl);
+      const extension = extensionOf(session.imageUrl);
       
       const formattedDate = formatDateTimeForFilename(date);
       const storeNameForFilename = session.englishStoreName || session.storeName || 'unknown';

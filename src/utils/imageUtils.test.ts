@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resizeImage, compressImage, isPdfFile, isHeicFile, readFileAsDataUrl } from './imageUtils';
+import { resizeImage, compressImage, isPdfFile, isHeicFile, readFileAsDataUrl, extensionOf, prepareReceiptImage } from './imageUtils';
 
 describe('imageUtils', () => {
   beforeEach(() => {
@@ -81,5 +81,37 @@ describe('imageUtils', () => {
     const result = await compressImage(base64, 1000000);
     
     expect(result).toBe(base64);
+  });
+
+  it.each([
+    ['data:image/jpeg;base64,x', 'jpg'],
+    ['data:application/pdf;base64,x', 'pdf'],
+    ['data:image/png;base64,x', 'png'],
+    ['data:image/webp;base64,x', 'webp'],
+    ['data:image/heic;base64,x', 'heic'],
+    ['data:image/heif;base64,x', 'heic'],
+    ['data:image/gif;base64,x', 'jpg'],
+    ['not a data url', 'jpg'],
+  ])('gives %s the extension .%s', (dataUrl, extension) => {
+    expect(extensionOf(dataUrl)).toBe(extension);
+  });
+
+  describe('prepareReceiptImage', () => {
+    it('passes a camera capture through unchanged', async () => {
+      expect(await prepareReceiptImage('data:image/jpeg;base64,camera')).toBe('data:image/jpeg;base64,camera');
+    });
+
+    it('reads a PDF as-is and labels it application/pdf even without a file type', async () => {
+      const pdf = new File(['%PDF-1.4'], 'receipt.pdf', { type: '' });
+
+      expect(await prepareReceiptImage(pdf)).toBe(`data:application/pdf;base64,${btoa('%PDF-1.4')}`);
+      expect(global.URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('resizes an image file to JPEG', async () => {
+      const png = new File(['png'], 'receipt.png', { type: 'image/png' });
+
+      expect(await prepareReceiptImage(png)).toBe('data:image/jpeg;base64,mock-data');
+    });
   });
 });
