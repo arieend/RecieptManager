@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { describe, it, expect } from 'vitest';
 import { createReceiptIntake, RawParsedReceipt } from './receiptIntake';
 
