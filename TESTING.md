@@ -91,6 +91,6 @@ describe('Button', () => {
 
 You can generate a coverage report to see which parts of the codebase are tested:
 ```bash
-npx vitest run --coverage
+npm run test:coverage
 ```
-*(Note: Requires `c8` or `istanbul` coverage provider to be installed)*
+CI runs this on every PR and fails if coverage of `src/services` or `src/utils` drops below the floors in `vite.config.ts` (`test.coverage.thresholds`). The floors start at current coverage; raise them when you add tests.

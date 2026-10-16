@@ -59,6 +59,21 @@ export default defineConfig(({mode}) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      coverage: {
+        provider: 'v8',
+        // TESTING.md: services and utility helpers carry the coverage bar.
+        include: ['src/services/**/*.ts', 'src/utils/**/*.ts'],
+        exclude: ['**/*.test.ts'],
+        reporter: ['text-summary', 'text'],
+        // Floors at today's coverage, not the 100% goal: raise them as tests land.
+        thresholds: {
+          statements: 42,
+          branches: 36,
+          functions: 50,
+          lines: 43,
+          'src/services/**/*.ts': { statements: 79, branches: 59, functions: 88, lines: 80 },
+        },
+      },
     },
   };
 });
