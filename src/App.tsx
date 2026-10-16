@@ -351,19 +351,19 @@ export default function App() {
       const file = files[i];
       
       try {
-        const newSession = await receiptIntake.intake(file, user.uid);
+        const draft = await receiptIntake.intake(file, user.uid);
 
         // Auto-save if enabled
         if (settings.autoSave) {
-          await saveSession(newSession);
+          await saveSession(draft);
         } else {
           // If not auto-saving, we still need to add it to history if it's a batch
-          const updatedHistory = [newSession, ...history];
+          const updatedHistory = [draft, ...history];
           setHistory(updatedHistory);
           localStorage.setItem(`history_${user.uid}`, JSON.stringify(updatedHistory));
         }
         
-        results.push(newSession);
+        results.push(draft);
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err);
       }

@@ -106,6 +106,17 @@ describe('Receipt intake', () => {
     ]);
   });
 
+  it('skips item entries that are not objects and cleans item text fields', async () => {
+    const draft = await makeIntake({
+      items: [null, 'Milk 6.00', { name: 'Eggs', unit_price: 12 }, { name: 42, category: 7, labels: ['Dairy', 3, null] }],
+    }).intake(JPEG, 'user-1');
+
+    expect(draft.items).toEqual([
+      { id: 'item-0', name: 'Eggs', price: 12, quantity: 1, category: undefined, labels: undefined, assignedTo: ['person-family'] },
+      { id: 'item-1', name: '', price: 0, quantity: 1, category: undefined, labels: ['Dairy'], assignedTo: ['person-family'] },
+    ]);
+  });
+
   it.each([
     ['data:image/jpeg;base64,abc', 'image/jpeg'],
     ['data:application/pdf;base64,abc', 'application/pdf'],
@@ -175,6 +186,10 @@ describe('Receipt intake', () => {
       ['03/04/2026', local(2026, 4, 3)],
       ['3/4/2026 08:15:00', local(2026, 4, 3, 8, 15)],
       ['2026/04/03', local(2026, 4, 3)],
+      ['2026-02-10T18:45:00Z', local(2026, 2, 10, 18, 45)],
+      ['2026-02-10T18:45:00+02:00', local(2026, 2, 10, 18, 45)],
+      ['2026-02-10T18:45:00.000', local(2026, 2, 10, 18, 45)],
+      ['2026-02-10 18:45', local(2026, 2, 10, 18, 45)],
     ])('reads %s as %s', async (raw, expected) => {
       expect(await createdAtFor(raw)).toBe(expected);
     });

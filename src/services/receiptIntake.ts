@@ -69,21 +69,29 @@ export const parseReceiptDate = (value: unknown): Date | null => {
 
   const [a, b, c] = fields.map(Number);
   const [year, month, day] = fields[0].length === 4 ? [a, b, c] : [c, b, a];
-  const [hours = 12, minutes = 0, seconds = 0] = timePart.split(':').map(Number);
+  // The printed time is wall-clock; a zone suffix from the parser is ignored.
+  const wallClock = timePart.replace(/(Z|[+-]\d{2}:?\d{2})$/i, '');
+  const [hours = 12, minutes = 0, seconds = 0] = wallClock.split(':').map(Number);
 
   const date = new Date(year, month - 1, day, hours, minutes, seconds);
   const isExact = date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
   return isExact && !isNaN(date.getTime()) ? date : null;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const toLabels = (value: unknown): string[] | undefined =>
+  Array.isArray(value) ? value.filter((label): label is string => typeof label === 'string') : undefined;
+
 const toItems = (rawItems: unknown): ReceiptItem[] =>
-  (Array.isArray(rawItems) ? rawItems : []).map((item, idx) => ({
+  (Array.isArray(rawItems) ? rawItems : []).filter(isRecord).map((item, idx) => ({
     id: `item-${idx}`,
-    name: item.name,
+    name: toText(item.name) ?? '',
     price: toNumber(item.unit_price, toNumber(item.price, 0)),
     quantity: toNumber(item.quantity, 1),
-    category: item.category,
-    labels: item.labels,
+    category: toText(item.category),
+    labels: toLabels(item.labels),
     assignedTo: [HOUSEHOLD_PERSON.id]
   }));
 
@@ -103,7 +111,7 @@ export const createReceiptIntake = ({ parser, prepare, now }: ReceiptIntakeDeps)
     } catch (error) {
       throw new ReceiptIntakeError('parse-failed', error);
     }
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    if (!isRecord(raw)) {
       throw new ReceiptIntakeError('parse-failed', raw);
     }
     return raw as RawParsedReceipt;
