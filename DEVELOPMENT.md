@@ -8,18 +8,12 @@ Receipt Manager is a React Single Page Application (SPA) that leverages Firebase
 
 ### Data Flow
 
-1.  **Input**: User captures a receipt image or uploads a PDF.
-2.  **Processing**:
-    *   Images are resized and compressed client-side (`utils/imageUtils.ts`).
-    *   The processed image/PDF is sent to Gemini AI (`services/geminiService.ts`) with a structured prompt.
-    *   Gemini returns a JSON object containing extracted receipt data.
-3.  **Session Management**:
-    *   The extracted data is used to create a new `Session` object.
-    *   Users can interact with the session (assign items, add people, adjust totals).
-4.  **Synchronization**:
-    *   Sessions are saved to Firestore (`sessions` collection).
-    *   If enabled, the receipt file is uploaded to Google Drive (`services/driveService.ts`).
-    *   Itemized data is appended to a Google Sheet (`services/sheetsService.ts`).
+Terms (Session, Draft Session, Receipt intake, …) are defined in [`GLOSSARY.md`](GLOSSARY.md). Each step names the module that owns it:
+
+1.  **Receipt intake** (`services/receiptIntake.ts`): an upload or camera capture becomes a Draft Session. Image preparation (`utils/imageUtils.ts` → `prepareReceiptImage`) and the Gemini receipt parser (`services/geminiService.ts`) are passed in from `App.tsx`.
+2.  **Review and edit** (`components/ParsingReview.tsx`, `components/SessionView.tsx`): the user checks the draft, assigns items, adjusts totals.
+3.  **Save** (`App.tsx` → `saveSession`): the Session is written to Firestore (`sessions` collection).
+4.  **Cloud sync** (`services/syncService.ts`): the receipt file goes to Google Drive (`services/driveService.ts`) and item rows to Google Sheets (`services/sheetsService.ts`).
 
 ## 📊 Data Models
 

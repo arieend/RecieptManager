@@ -141,6 +141,34 @@ describe('Receipt intake', () => {
     expect(draft.id).toBe(String(NOW));
   });
 
+  describe('recorded Gemini responses', () => {
+    // Real parser output captured with `npm run capture:gemini` (see TESTING.md).
+    const recorded = Object.entries(
+      import.meta.glob<RawParsedReceipt>('./__fixtures__/gemini/*.json', { eager: true, import: 'default' })
+    );
+
+    if (recorded.length === 0) {
+      it.skip('no recorded responses yet: capture some with npm run capture:gemini', () => {});
+    }
+
+    it.each(recorded)('%s becomes a well-formed Draft Session', async (_path, response) => {
+      const draft = await makeIntake(response).intake(JPEG, 'user-1');
+
+      expect(draft.storeName).not.toBe('');
+      expect(['ILS', 'USD', 'EUR']).toContain(draft.currency);
+      expect(Number.isNaN(Date.parse(draft.createdAt))).toBe(false);
+      for (const value of [draft.total, draft.tax, draft.tip, draft.exchangeRate]) {
+        expect(Number.isFinite(value)).toBe(true);
+      }
+      for (const item of draft.items) {
+        expect(typeof item.name).toBe('string');
+        expect(Number.isFinite(item.price)).toBe(true);
+        expect(item.quantity).toBeGreaterThan(0);
+        expect(item.assignedTo).toEqual(['person-family']);
+      }
+    });
+  });
+
   describe('failures', () => {
     const intakeWith = (deps: Partial<Parameters<typeof createReceiptIntake>[0]>) =>
       createReceiptIntake({
