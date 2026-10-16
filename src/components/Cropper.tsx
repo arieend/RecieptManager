@@ -203,6 +203,15 @@ export const Cropper: React.FC<CropperProps> = ({
         ]);
       }
     };
+    img.onerror = () => {
+      setIsDetecting(false);
+      setPoints([
+        { x: 10, y: 10 },
+        { x: 90, y: 10 },
+        { x: 90, y: 90 },
+        { x: 10, y: 90 },
+      ]);
+    };
     img.src = image;
   }, [image, autoDetectEnabled]);
 

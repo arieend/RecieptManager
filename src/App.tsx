@@ -14,7 +14,7 @@ import { translations, Language } from './translations';
 import { ReceiptItem, Person, Session } from './types';
 import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
-import { resizeImage, compressImage } from './utils/imageUtils';
+import { resizeImage, compressImage, isPdfFile, isHeicFile, readFileAsDataUrl } from './utils/imageUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
 import { 
@@ -318,18 +318,48 @@ export default function App() {
 
       if (typeof file === 'string') {
         base64 = file;
+        if (file.startsWith('data:')) {
+          const match = file.match(/^data:([^;]+);/);
+          if (match && match[1]) {
+            mimeType = match[1];
+          }
+        }
+        if (mimeType.includes('pdf')) originalExtension = 'pdf';
+        else if (mimeType.includes('png')) originalExtension = 'png';
+        else if (mimeType.includes('webp')) originalExtension = 'webp';
+        else if (mimeType.includes('heic') || mimeType.includes('heif')) originalExtension = 'heic';
       } else {
-        mimeType = file.type;
-        originalExtension = file.name.split('.').pop() || (mimeType === 'application/pdf' ? 'pdf' : 'jpg');
-        if (file.type === 'application/pdf') {
-          base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
+        const isPdf = isPdfFile(file);
+        const isHeic = isHeicFile(file);
+        const nameExt = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
+
+        if (isPdf) {
+          mimeType = 'application/pdf';
+          originalExtension = 'pdf';
+          base64 = await readFileAsDataUrl(file);
+          if (!base64.startsWith('data:application/pdf')) {
+            base64 = base64.replace(/^data:[^;]+;base64,/, 'data:application/pdf;base64,');
+          }
         } else {
+          if (isHeic) {
+            mimeType = 'image/heic';
+            originalExtension = 'heic';
+          } else if (nameExt === 'png' || file.type === 'image/png') {
+            mimeType = 'image/png';
+            originalExtension = 'png';
+          } else if (nameExt === 'webp' || file.type === 'image/webp') {
+            mimeType = 'image/webp';
+            originalExtension = 'webp';
+          } else {
+            mimeType = 'image/jpeg';
+            originalExtension = 'jpg';
+          }
+
           base64 = await resizeImage(file);
+          if (base64.startsWith('data:image/jpeg')) {
+            mimeType = 'image/jpeg';
+            originalExtension = 'jpg';
+          }
         }
       }
 
@@ -415,10 +445,11 @@ export default function App() {
       // Auto-save logic is moved to handleConfirmReview
     } catch (error: any) {
       console.error("Receipt processing error:", error);
-      // Check if it's a Gemini error or something else
-      const errorMessage = error.message || String(error);
+      const errorMessage = error?.message || String(error);
       if (errorMessage.includes('Gemini') || errorMessage.includes('parse')) {
         setShowToast(t.parseErrorMessage);
+      } else if (errorMessage.includes('valid image') || errorMessage.includes('decode image') || errorMessage.includes('read file')) {
+        setShowToast(language === 'he' ? 'שגיאה בקריאת הקובץ. אנא ודא שהקובץ תקין.' : 'Failed to read file. Please ensure it is a valid receipt image or PDF.');
       } else {
         setShowToast(language === 'he' ? 'שגיאה בעיבוד הקבלה' : 'Error processing receipt');
       }
@@ -441,18 +472,40 @@ export default function App() {
       
       try {
         let base64: string;
-        let mimeType = file.type;
-        let originalExtension = file.name.split('.').pop() || (mimeType === 'application/pdf' ? 'pdf' : 'jpg');
+        let mimeType = "image/jpeg";
+        let originalExtension = "jpg";
 
-        if (mimeType.includes('pdf')) {
-          base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
+        const isPdf = isPdfFile(file);
+        const isHeic = isHeicFile(file);
+        const nameExt = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
+
+        if (isPdf) {
+          mimeType = 'application/pdf';
+          originalExtension = 'pdf';
+          base64 = await readFileAsDataUrl(file);
+          if (!base64.startsWith('data:application/pdf')) {
+            base64 = base64.replace(/^data:[^;]+;base64,/, 'data:application/pdf;base64,');
+          }
         } else {
+          if (isHeic) {
+            mimeType = 'image/heic';
+            originalExtension = 'heic';
+          } else if (nameExt === 'png' || file.type === 'image/png') {
+            mimeType = 'image/png';
+            originalExtension = 'png';
+          } else if (nameExt === 'webp' || file.type === 'image/webp') {
+            mimeType = 'image/webp';
+            originalExtension = 'webp';
+          } else {
+            mimeType = 'image/jpeg';
+            originalExtension = 'jpg';
+          }
+
           base64 = await resizeImage(file);
+          if (base64.startsWith('data:image/jpeg')) {
+            mimeType = 'image/jpeg';
+            originalExtension = 'jpg';
+          }
         }
 
         const result = await parseReceiptImage(base64, mimeType);
@@ -871,9 +924,15 @@ export default function App() {
                 }}
                 onUploadFolder={(e) => {
                   const files = Array.from(e.target.files || []).filter(f => 
-                    f.type.includes('image/') || f.type.includes('pdf')
+                    isPdfFile(f) || 
+                    f.type.includes('image/') || 
+                    /\.(jpg|jpeg|png|webp|heic|heif|pdf|bmp|tiff)$/i.test(f.name)
                   );
-                  processBatch(files);
+                  if (files.length > 0) {
+                    processBatch(files);
+                  } else {
+                    setShowToast(language === 'he' ? 'לא נמצאו קבצי תמונות או PDF בתיקייה' : 'No image or PDF receipt files found in folder');
+                  }
                 }}
                 onHistoryClick={() => setView('history')}
                 onMonthlySummaryClick={() => setView('monthlySummary')}
@@ -1095,7 +1154,7 @@ export default function App() {
               e.target.value = '';
             }
           }} 
-          accept="image/*,application/pdf" 
+          accept="image/*,application/pdf,.pdf,.heic,.heif" 
           className="sr-only" 
           aria-hidden="true"
         />

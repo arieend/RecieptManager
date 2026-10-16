@@ -1,7 +1,7 @@
 import { Session, Person, ReceiptItem } from '../types';
 import { StorageSettings, buildDirectoryPath, formatDateTimeForFilename, sanitizeFilename, formatDateForSheets } from './configService';
 import { getOrCreateFolderPath, uploadFileToDrive, findSpreadsheetByName } from './driveService';
-import { createReceiptsSpreadsheet, appendToSpreadsheet } from './sheetsService';
+import { createReceiptsSpreadsheet, appendToSpreadsheet, detectSpreadsheetDateFormat, ensureDateColumnFormat, SheetDateFormatInfo } from './sheetsService';
 
 export interface SyncResult {
   driveFileId?: string;
@@ -61,6 +61,17 @@ export const syncToCloud = async (
         result.spreadsheetId = currentSpreadsheetId;
       }
 
+      // Check existing 'Date' column format in the recipient Google sheet to match it
+      let formatInfo: SheetDateFormatInfo | null = null;
+      try {
+        formatInfo = await detectSpreadsheetDateFormat(driveToken, currentSpreadsheetId, 'Purchases');
+      } catch (err) {
+        console.warn("Could not detect spreadsheet date format, using default:", err);
+      }
+
+      const detectedPattern = formatInfo?.pattern || 'DD/MM/YYYY';
+      const detectedSheetsPattern = formatInfo?.sheetsPattern || 'dd/mm/yyyy';
+
       const rows = session.items.map(item => {
         const assignedNames = item.assignedTo
           .map(pid => session.people.find(p => p.id === pid)?.name)
@@ -76,7 +87,7 @@ export const syncToCloud = async (
         const originalInfo = session.currency !== 'ILS' ? `${item.price.toFixed(2)} ${session.currency}` : '';
 
         return [
-          formatDateForSheets(new Date(session.createdAt)),
+          formatDateForSheets(new Date(session.createdAt), detectedPattern),
           session.storeName,
           item.name,
           priceInNIS,
@@ -90,6 +101,24 @@ export const syncToCloud = async (
       });
 
       const updatedRange = await appendToSpreadsheet(driveToken, currentSpreadsheetId, rows);
+
+      // Ensure the newly inserted date cells are explicitly formatted as DATE in the sheet
+      if (updatedRange && formatInfo?.sheetId !== undefined) {
+        const rowMatch = updatedRange.match(/!A(\d+):[A-Z](\d+)/);
+        if (rowMatch) {
+          const startRow1Based = parseInt(rowMatch[1], 10);
+          const endRow1Based = parseInt(rowMatch[2], 10);
+          await ensureDateColumnFormat(
+            driveToken,
+            currentSpreadsheetId,
+            formatInfo.sheetId,
+            formatInfo.columnIndex ?? 0,
+            detectedSheetsPattern,
+            startRow1Based - 1,
+            endRow1Based
+          );
+        }
+      }
       
       // Construct spreadsheet link
       result.spreadsheetLink = `https://docs.google.com/spreadsheets/d/${currentSpreadsheetId}/edit`;

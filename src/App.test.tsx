@@ -101,6 +101,10 @@ vi.mock('motion/react', () => {
 // Mock utils and services
 vi.mock('./utils/imageUtils', () => ({
   resizeImage: vi.fn(() => Promise.resolve('data:image/png;base64,mock')),
+  compressImage: vi.fn((b) => Promise.resolve(b)),
+  isPdfFile: vi.fn((file) => typeof file === 'string' ? file.includes('pdf') : Boolean(file?.name?.endsWith('.pdf') || file?.type?.includes('pdf'))),
+  isHeicFile: vi.fn(() => false),
+  readFileAsDataUrl: vi.fn(() => Promise.resolve('data:image/jpeg;base64,mock')),
 }));
 
 vi.mock('./services/geminiService', () => ({

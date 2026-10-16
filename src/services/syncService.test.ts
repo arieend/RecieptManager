@@ -111,4 +111,42 @@ describe('syncService', () => {
     expect(driveService.uploadFileToDrive).not.toHaveBeenCalled();
     expect(sheetsService.appendToSpreadsheet).toHaveBeenCalled();
   });
+
+  it('matches detected Date column format from recipient spreadsheet without text quote', async () => {
+    vi.mocked(sheetsService.detectSpreadsheetDateFormat).mockResolvedValue({
+      pattern: 'YYYY-MM-DD',
+      sheetsPattern: 'yyyy-mm-dd',
+      columnIndex: 0,
+      sheetId: 0,
+      sheetTitle: 'Purchases'
+    });
+    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A5:J5');
+
+    const fixedSession = {
+      ...mockSession,
+      createdAt: '2024-05-20T14:30:00.000Z'
+    };
+
+    await syncToCloud(fixedSession, mockSettings, mockToken);
+
+    expect(sheetsService.detectSpreadsheetDateFormat).toHaveBeenCalledWith(mockToken, 'sheet-123', 'Purchases');
+    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalledWith(
+      mockToken,
+      'sheet-123',
+      expect.arrayContaining([
+        expect.arrayContaining([
+          '2024-05-20', // Matches YYYY-MM-DD pattern and NOT text with quote
+        ])
+      ])
+    );
+    expect(sheetsService.ensureDateColumnFormat).toHaveBeenCalledWith(
+      mockToken,
+      'sheet-123',
+      0,
+      0,
+      'yyyy-mm-dd',
+      4,
+      5
+    );
+  });
 });

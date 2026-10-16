@@ -66,7 +66,7 @@ export const MainView: React.FC<MainViewProps> = ({
           <input 
             type="file" 
             multiple
-            accept="image/*,application/pdf" 
+            accept="image/*,application/pdf,.pdf,.heic,.heif" 
             onChange={(e) => {
               onUpload(e);
               e.target.value = '';

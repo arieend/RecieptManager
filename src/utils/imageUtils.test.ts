@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resizeImage, compressImage } from './imageUtils';
+import { resizeImage, compressImage, isPdfFile, isHeicFile, readFileAsDataUrl } from './imageUtils';
 
 describe('imageUtils', () => {
   beforeEach(() => {
@@ -46,6 +46,27 @@ describe('imageUtils', () => {
     expect(result).toBe('data:image/jpeg;base64,mock-data');
     expect(global.URL.createObjectURL).toHaveBeenCalledWith(file);
     expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('mock-url');
+  });
+
+  it('identifies PDF files correctly', () => {
+    expect(isPdfFile(new File([''], 'receipt.pdf', { type: 'application/pdf' }))).toBe(true);
+    expect(isPdfFile(new File([''], 'RECEIPT.PDF', { type: '' }))).toBe(true);
+    expect(isPdfFile(new File([''], 'test.bin', { type: 'application/x-pdf' }))).toBe(true);
+    expect(isPdfFile('data:application/pdf;base64,xyz')).toBe(true);
+    expect(isPdfFile(new File([''], 'image.jpg', { type: 'image/jpeg' }))).toBe(false);
+  });
+
+  it('identifies HEIC/HEIF files correctly', () => {
+    expect(isHeicFile(new File([''], 'photo.heic', { type: 'image/heic' }))).toBe(true);
+    expect(isHeicFile(new File([''], 'photo.HEIC', { type: '' }))).toBe(true);
+    expect(isHeicFile(new File([''], 'photo.heif', { type: '' }))).toBe(true);
+    expect(isHeicFile('data:image/heic;base64,xyz')).toBe(true);
+    expect(isHeicFile(new File([''], 'image.png', { type: 'image/png' }))).toBe(false);
+  });
+
+  it('resizes base64 string directly', async () => {
+    const result = await resizeImage('data:image/jpeg;base64,incoming');
+    expect(result).toBe('data:image/jpeg;base64,mock-data');
   });
 
   it('compresses an image correctly', async () => {
