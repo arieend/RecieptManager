@@ -1,4 +1,20 @@
 
+/** The mime type a data URL declares, e.g. `image/jpeg` or `application/pdf`. */
+export const mimeTypeOf = (dataUrl: string): string =>
+  dataUrl.match(/^data:([^;,]+)/)?.[1] ?? 'image/jpeg';
+
+const EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'image/heif': 'heic',
+};
+
+/** The file extension for a data URL's mime type, defaulting to `jpg`. */
+export const extensionOf = (dataUrl: string): string =>
+  EXTENSIONS[mimeTypeOf(dataUrl)] ?? 'jpg';
+
 /**
  * Detects if a file or string is a PDF document.
  */
@@ -278,4 +294,20 @@ export const compressImage = async (base64: string, targetSize: number = 800000)
 
     img.src = base64;
   });
+};
+
+/**
+ * Turns an upload or camera capture into a data URL ready for receipt parsing.
+ * Camera captures pass through; PDFs are read as-is; images are resized to JPEG
+ * (HEIC converted first), keeping their own type only if decoding fails.
+ */
+export const prepareReceiptImage = async (input: File | string): Promise<string> => {
+  if (typeof input === 'string') return input;
+
+  if (isPdfFile(input)) {
+    const dataUrl = await readFileAsDataUrl(input);
+    return dataUrl.replace(/^data:[^;]*;base64,/, 'data:application/pdf;base64,');
+  }
+
+  return resizeImage(input);
 };

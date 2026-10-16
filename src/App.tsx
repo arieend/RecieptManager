@@ -14,7 +14,8 @@ import { translations, Language } from './translations';
 import { ReceiptItem, Person, Session } from './types';
 import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
-import { resizeImage, compressImage, isPdfFile, isHeicFile, readFileAsDataUrl } from './utils/imageUtils';
+import { compressImage, isPdfFile, prepareReceiptImage } from './utils/imageUtils';
+import { createReceiptIntake, ReceiptIntakeError } from './services/receiptIntake';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
 import { 
@@ -33,6 +34,12 @@ import { ConfirmModal } from './components/Modal';
 import { ParsingReview } from './components/ParsingReview';
 import { MonthlySummaryView } from './components/MonthlySummaryView';
 
+const receiptIntake = createReceiptIntake({
+  parser: parseReceiptImage,
+  prepare: prepareReceiptImage,
+  now: Date.now,
+});
+
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -43,7 +50,6 @@ export default function App() {
   const [history, setHistory] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [reviewSession, setReviewSession] = useState<Session | null>(null);
-  const [lastOriginalExtension, setLastOriginalExtension] = useState<string>('jpg');
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
@@ -308,151 +314,25 @@ export default function App() {
     }
   };
 
+  const showIntakeError = (error: unknown) => {
+    if (error instanceof ReceiptIntakeError && error.kind === 'unreadable-file') {
+      setShowToast(language === 'he' ? 'שגיאה בקריאת הקובץ. אנא ודא שהקובץ תקין.' : 'Failed to read file. Please ensure it is a valid receipt image or PDF.');
+    } else if (error instanceof ReceiptIntakeError) {
+      setShowToast(t.parseErrorMessage);
+    } else {
+      setShowToast(language === 'he' ? 'שגיאה בעיבוד הקבלה' : 'Error processing receipt');
+    }
+  };
+
   const processReceipt = async (file: File | string) => {
-    console.log("Processing receipt...", typeof file === 'string' ? "base64" : file.name);
     setIsParsing(true);
     try {
-      let base64: string;
-      let mimeType = "image/jpeg";
-      let originalExtension = "jpg";
-
-      if (typeof file === 'string') {
-        base64 = file;
-        if (file.startsWith('data:')) {
-          const match = file.match(/^data:([^;]+);/);
-          if (match && match[1]) {
-            mimeType = match[1];
-          }
-        }
-        if (mimeType.includes('pdf')) originalExtension = 'pdf';
-        else if (mimeType.includes('png')) originalExtension = 'png';
-        else if (mimeType.includes('webp')) originalExtension = 'webp';
-        else if (mimeType.includes('heic') || mimeType.includes('heif')) originalExtension = 'heic';
-      } else {
-        const isPdf = isPdfFile(file);
-        const isHeic = isHeicFile(file);
-        const nameExt = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
-
-        if (isPdf) {
-          mimeType = 'application/pdf';
-          originalExtension = 'pdf';
-          base64 = await readFileAsDataUrl(file);
-          if (!base64.startsWith('data:application/pdf')) {
-            base64 = base64.replace(/^data:[^;]+;base64,/, 'data:application/pdf;base64,');
-          }
-        } else {
-          if (isHeic) {
-            mimeType = 'image/heic';
-            originalExtension = 'heic';
-          } else if (nameExt === 'png' || file.type === 'image/png') {
-            mimeType = 'image/png';
-            originalExtension = 'png';
-          } else if (nameExt === 'webp' || file.type === 'image/webp') {
-            mimeType = 'image/webp';
-            originalExtension = 'webp';
-          } else {
-            mimeType = 'image/jpeg';
-            originalExtension = 'jpg';
-          }
-
-          base64 = await resizeImage(file);
-          if (base64.startsWith('data:image/jpeg')) {
-            mimeType = 'image/jpeg';
-            originalExtension = 'jpg';
-          }
-        }
-      }
-
-      const result = await parseReceiptImage(base64, mimeType);
-      
-      let createdAt = new Date().toISOString();
-      let transactionDate = new Date();
-
-      if (result.transaction_datetime) {
-        try {
-          let dateStrRaw = result.transaction_datetime.trim();
-          let parsedDate: Date | null = null;
-          
-          // Custom parsing to handle DD/MM/YYYY vs YYYY-MM-DD
-          let datePart = dateStrRaw;
-          let timePart = "12:00:00";
-          if (dateStrRaw.includes(' ')) {
-            const parts = dateStrRaw.split(' ');
-            datePart = parts[0];
-            timePart = parts[1];
-          } else if (dateStrRaw.includes('T')) {
-            const parts = dateStrRaw.split('T');
-            datePart = parts[0];
-            timePart = parts[1];
-          }
-
-          if (datePart.includes('/')) {
-            const dp = datePart.split('/');
-            if (dp.length === 3) {
-              if (dp[2].length === 4) { // DD/MM/YYYY
-                parsedDate = new Date(`${dp[2]}-${dp[1].padStart(2, '0')}-${dp[0].padStart(2, '0')}T${timePart}`);
-              } else if (dp[0].length === 4) { // YYYY/MM/DD
-                parsedDate = new Date(`${dp[0]}-${dp[1].padStart(2, '0')}-${dp[2].padStart(2, '0')}T${timePart}`);
-              }
-            }
-          }
-
-          const extractedDate = parsedDate || new Date(dateStrRaw.replace(' ', 'T') + (dateStrRaw.length <= 10 ? 'T12:00:00' : ''));
-          
-          if (!isNaN(extractedDate.getTime())) {
-            createdAt = extractedDate.toISOString();
-            transactionDate = extractedDate;
-          }
-        } catch (e) {
-          console.warn("Failed to parse extracted date:", result.transaction_datetime);
-        }
-      }
-
-      const familyPerson: Person = {
-        id: 'person-family',
-        name: 'משפחה',
-        color: 'hsl(150, 70%, 50%)'
-      };
-      
-      const newSession: Session = {
-        id: Date.now().toString(),
-        userId: user?.uid || 'anonymous',
-        storeName: result.store_or_brand_name || 'unknown',
-        englishStoreName: result.store_name_english || result.store_or_brand_name || 'unknown',
-        createdAt,
-        items: (result.items || []).map((item: any, idx: number) => ({
-          id: `item-${idx}`,
-          name: item.name,
-          price: Number(item.unit_price || item.price || 0) || 0,
-          quantity: Number(item.quantity || 1) || 1,
-          category: item.category,
-          labels: item.labels,
-          assignedTo: [familyPerson.id]
-        })),
-        people: [familyPerson],
-        tax: Number(result.tax || 0) || 0,
-        tip: Number(result.tip || 0) || 0,
-        total: Number(result.price || 0) || 0,
-        currency: (result.currency as 'ILS' | 'USD' | 'EUR') || 'ILS',
-        exchangeRate: Number(result.exchange_rate_to_ils || 1) || 1,
-        imageUrl: base64
-      };
-
-      setReviewSession(newSession);
-      setLastOriginalExtension(originalExtension);
+      const draft = await receiptIntake.intake(file, user?.uid || 'anonymous');
+      setReviewSession(draft);
       setView('review');
-
-      // Auto-save logic is moved to handleConfirmReview
-    } catch (error: any) {
+    } catch (error) {
       console.error("Receipt processing error:", error);
-      const errorMessage = error?.message || String(error);
-      if (errorMessage.includes('Gemini') || errorMessage.includes('parse')) {
-        setShowToast(t.parseErrorMessage);
-      } else if (errorMessage.includes('valid image') || errorMessage.includes('decode image') || errorMessage.includes('read file')) {
-        setShowToast(language === 'he' ? 'שגיאה בקריאת הקובץ. אנא ודא שהקובץ תקין.' : 'Failed to read file. Please ensure it is a valid receipt image or PDF.');
-      } else {
-        setShowToast(language === 'he' ? 'שגיאה בעיבוד הקבלה' : 'Error processing receipt');
-      }
+      showIntakeError(error);
     } finally {
       setIsParsing(false);
     }
@@ -471,115 +351,11 @@ export default function App() {
       const file = files[i];
       
       try {
-        let base64: string;
-        let mimeType = "image/jpeg";
-        let originalExtension = "jpg";
-
-        const isPdf = isPdfFile(file);
-        const isHeic = isHeicFile(file);
-        const nameExt = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
-
-        if (isPdf) {
-          mimeType = 'application/pdf';
-          originalExtension = 'pdf';
-          base64 = await readFileAsDataUrl(file);
-          if (!base64.startsWith('data:application/pdf')) {
-            base64 = base64.replace(/^data:[^;]+;base64,/, 'data:application/pdf;base64,');
-          }
-        } else {
-          if (isHeic) {
-            mimeType = 'image/heic';
-            originalExtension = 'heic';
-          } else if (nameExt === 'png' || file.type === 'image/png') {
-            mimeType = 'image/png';
-            originalExtension = 'png';
-          } else if (nameExt === 'webp' || file.type === 'image/webp') {
-            mimeType = 'image/webp';
-            originalExtension = 'webp';
-          } else {
-            mimeType = 'image/jpeg';
-            originalExtension = 'jpg';
-          }
-
-          base64 = await resizeImage(file);
-          if (base64.startsWith('data:image/jpeg')) {
-            mimeType = 'image/jpeg';
-            originalExtension = 'jpg';
-          }
-        }
-
-        const result = await parseReceiptImage(base64, mimeType);
-        
-        let createdAt = new Date().toISOString();
-        if (result.transaction_datetime) {
-          try {
-            let dateStrRaw = result.transaction_datetime.trim();
-            let parsedDate: Date | null = null;
-
-            let datePart = dateStrRaw;
-            let timePart = "12:00:00";
-            if (dateStrRaw.includes(' ')) {
-              const parts = dateStrRaw.split(' ');
-              datePart = parts[0];
-              timePart = parts[1];
-            } else if (dateStrRaw.includes('T')) {
-              const parts = dateStrRaw.split('T');
-              datePart = parts[0];
-              timePart = parts[1];
-            }
-
-            if (datePart.includes('/')) {
-              const dp = datePart.split('/');
-              if (dp.length === 3) {
-                if (dp[2].length === 4) { // DD/MM/YYYY
-                  parsedDate = new Date(`${dp[2]}-${dp[1].padStart(2, '0')}-${dp[0].padStart(2, '0')}T${timePart}`);
-                } else if (dp[0].length === 4) { // YYYY/MM/DD
-                  parsedDate = new Date(`${dp[0]}-${dp[1].padStart(2, '0')}-${dp[2].padStart(2, '0')}T${timePart}`);
-                }
-              }
-            }
-
-            const extractedDate = parsedDate || new Date(dateStrRaw.replace(' ', 'T') + (dateStrRaw.length <= 10 ? 'T12:00:00' : ''));
-
-            if (!isNaN(extractedDate.getTime())) {
-              createdAt = extractedDate.toISOString();
-            }
-          } catch (e) {}
-        }
-
-        const familyPerson: Person = {
-          id: 'person-family',
-          name: 'משפחה',
-          color: 'hsl(150, 70%, 50%)'
-        };
-        
-        const newSession: Session = {
-          id: (Date.now() + i).toString(),
-          userId: user.uid,
-          storeName: result.store_or_brand_name || 'unknown',
-          englishStoreName: result.store_name_english || result.store_or_brand_name || 'unknown',
-          createdAt,
-          items: (result.items || []).map((item: any, idx: number) => ({
-            id: `item-${idx}`,
-            name: item.name,
-            price: Number(item.unit_price || item.price || 0) || 0,
-            quantity: Number(item.quantity || 1) || 1,
-            category: item.category,
-            labels: item.labels,
-            assignedTo: [familyPerson.id]
-          })),
-          people: [familyPerson],
-          tax: Number(result.tax || 0) || 0,
-          tip: Number(result.tip || 0) || 0,
-          total: Number(result.price || 0) || 0,
-          currency: (result.currency as 'ILS' | 'USD' | 'EUR') || 'ILS',
-          exchangeRate: Number(result.exchange_rate_to_ils || 1) || 1,
-          imageUrl: base64
-        };
+        const newSession = await receiptIntake.intake(file, user.uid);
 
         // Auto-save if enabled
         if (settings.autoSave) {
-          await saveSession(newSession, originalExtension);
+          await saveSession(newSession);
         } else {
           // If not auto-saving, we still need to add it to history if it's a batch
           const updatedHistory = [newSession, ...history];
@@ -605,7 +381,7 @@ export default function App() {
     }
   };
 
-  const saveSession = async (sessionToUse?: Session, forceExtension?: string) => {
+  const saveSession = async (sessionToUse?: Session) => {
     const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
     if (!session || !user) return;
     
@@ -621,7 +397,7 @@ export default function App() {
       // 1. Sync to Cloud (Drive & Sheets)
       if (driveToken && (imageUrl && !driveFileId || settings.syncToSheets)) {
         try {
-          const syncResult = await syncToCloud(session, settings, driveToken, forceExtension);
+          const syncResult = await syncToCloud(session, settings, driveToken);
           
           if (syncResult.driveFileId) driveFileId = syncResult.driveFileId;
           if (syncResult.driveLink) driveLink = syncResult.driveLink;
@@ -736,7 +512,7 @@ export default function App() {
     
     // Auto-save if enabled
     if (settings.autoSave && user) {
-      saveSession(session, lastOriginalExtension).catch(err => {
+      saveSession(session).catch(err => {
         console.error("Auto-save failed:", err);
         setShowToast(language === 'he' ? 'שגיאה בשמירה אוטומטית' : 'Auto-save failed');
       });
