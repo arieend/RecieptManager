@@ -51,6 +51,6 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   translate: vi.fn(),
   save: vi.fn(),
   restore: vi.fn(),
-}));
+})) as unknown as HTMLCanvasElement['getContext'];
 
 HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,mock');
