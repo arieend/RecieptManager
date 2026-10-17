@@ -3,10 +3,11 @@ import { syncToCloud, SheetsSyncError } from './syncService';
 import { Session } from '../types';
 import { StorageSettings } from './configService';
 import * as driveService from './driveService';
-import * as sheetsService from './sheetsService';
+import { createGoogleSheetsAdapter } from './googleSheetsAdapter';
+import { createInMemorySpreadsheetAdapter } from './purchasesSheet';
 
 vi.mock('./driveService');
-vi.mock('./sheetsService');
+vi.mock('./googleSheetsAdapter');
 
 describe('syncService', () => {
   const mockToken = 'mock-token';
@@ -41,7 +42,12 @@ describe('syncService', () => {
     driveFileName: '',
   };
 
+  let sheets: ReturnType<typeof createInMemorySpreadsheetAdapter>;
+
   beforeEach(() => {
+    sheets = createInMemorySpreadsheetAdapter();
+    sheets.seed('sheet-123', { name: 'Receipts Database', tabs: [{ sheetId: 0, title: 'Purchases', rows: [] }] });
+    vi.mocked(createGoogleSheetsAdapter).mockReturnValue(sheets);
     // Sessions with an image upload to Drive unless a test says otherwise.
     vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
     vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
@@ -51,52 +57,29 @@ describe('syncService', () => {
     });
   });
 
-  it('syncs to Drive and Sheets correctly', async () => {
-    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
-    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
-      id: 'file-123',
-      name: 'Test_Store_20240101_10.00.jpg',
-      webViewLink: 'http://link'
-    });
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
-
+  it('uploads to Drive and appends to the Purchases sheet with the new link', async () => {
     const result = await syncToCloud(mockSession, mockSettings, mockToken);
 
-    expect(result.driveFileId).toBe('file-123');
-    expect(result.driveLink).toBe('http://link');
-    expect(driveService.uploadFileToDrive).toHaveBeenCalled();
-    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalledWith(
-      mockToken,
-      'sheet-123',
-      expect.arrayContaining([
-        expect.arrayContaining([
-          expect.stringMatching(/^'?\d{2}\/\d{2}\/\d{4}$/),
-          'Test Store',
-          'Item 1',
-          10,
-          'Food',
-          'Tag1',
-          'Person 1',
-          expect.stringContaining('HYPERLINK')
-        ])
-      ])
-    );
+    const link = 'https://docs.google.com/spreadsheets/d/sheet-123/edit';
+    expect(result).toEqual({
+      driveFileId: 'file-123',
+      driveLink: 'http://link',
+      driveFileName: 'Test_Store_20240101_10.00.jpg',
+      spreadsheetLink: link,
+      itemSheetsLinks: { i1: `${link}#gid=0&range=A1` },
+    });
+    expect(createGoogleSheetsAdapter).toHaveBeenCalledWith(mockToken);
+    expect(sheets.tab('sheet-123', 'Purchases')).toEqual([
+      [expect.stringMatching(/^\d{2}\/\d{2}\/\d{4}$/), 'Test Store', 'Item 1', '10', 'Food', 'Tag1', 'Person 1',
+        '=HYPERLINK("http://link", "Test_Store_20240101_10.00.jpg")', '', ''],
+    ]);
   });
 
   it('keeps the finished Drive upload when Sheets then fails', async () => {
-    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
-    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
-      id: 'file-123',
-      name: 'Test_Store_20240101_10.00.jpg',
-      webViewLink: 'http://link'
-    });
-    const sheetsFailure = new Error('Failed to append to spreadsheet');
-    vi.mocked(sheetsService.appendToSpreadsheet).mockRejectedValueOnce(sheetsFailure);
-
-    const error = await syncToCloud(mockSession, mockSettings, mockToken).catch((e) => e);
+    const error = await syncToCloud(mockSession, { ...mockSettings, spreadsheetId: 'missing' }, mockToken).catch((e) => e);
 
     expect(error).toBeInstanceOf(SheetsSyncError);
-    expect(error.cause).toBe(sheetsFailure);
+    expect(error.cause).toMatchObject({ status: 404 });
     expect(error.synced).toEqual({
       driveFileId: 'file-123',
       driveLink: 'http://link',
@@ -106,36 +89,35 @@ describe('syncService', () => {
 
   it('lets a Drive failure through as is', async () => {
     const driveFailure = new Error('Drive upload failed');
-    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
     vi.mocked(driveService.uploadFileToDrive).mockRejectedValueOnce(driveFailure);
 
     await expect(syncToCloud(mockSession, mockSettings, mockToken)).rejects.toBe(driveFailure);
-    expect(sheetsService.appendToSpreadsheet).not.toHaveBeenCalled();
+    expect(sheets.tab('sheet-123', 'Purchases')).toEqual([]);
   });
 
-  it('creates a new spreadsheet if ID is missing and not found by name', async () => {
-    const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
-    vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue(null);
-    vi.mocked(sheetsService.createReceiptsSpreadsheet).mockResolvedValue('new-sheet-456');
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
+  it('creates the spreadsheet when there is no ID and none has the name', async () => {
+    const result = await syncToCloud(mockSession, { ...mockSettings, spreadsheetId: '', spreadsheetName: 'New Receipts' }, mockToken);
 
-    const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
-
-    expect(result.spreadsheetId).toBe('new-sheet-456');
-    expect(driveService.findSpreadsheetByName).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
-    expect(sheetsService.createReceiptsSpreadsheet).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
+    expect(result.spreadsheetId).toMatch(/^memory-sheet-/);
+    expect(sheets.tab(result.spreadsheetId!, 'Purchases')).toHaveLength(2);
   });
 
-  it('uses existing spreadsheet if found by name', async () => {
-    const settingsWithoutSheet = { ...mockSettings, spreadsheetId: '' };
-    vi.mocked(driveService.findSpreadsheetByName).mockResolvedValue('existing-sheet-789');
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
+  it('uses the spreadsheet with that name when there is no ID', async () => {
+    const result = await syncToCloud(mockSession, { ...mockSettings, spreadsheetId: '' }, mockToken);
 
-    const result = await syncToCloud(mockSession, settingsWithoutSheet, mockToken);
+    expect(result.spreadsheetId).toBe('sheet-123');
+    expect(sheets.tab('sheet-123', 'Purchases')).toHaveLength(1);
+  });
 
-    expect(result.spreadsheetId).toBe('existing-sheet-789');
-    expect(driveService.findSpreadsheetByName).toHaveBeenCalledWith(mockToken, mockSettings.spreadsheetName);
-    expect(sheetsService.createReceiptsSpreadsheet).not.toHaveBeenCalled();
+  it('reports a spreadsheet it created even when the append then fails', async () => {
+    vi.mocked(createGoogleSheetsAdapter).mockReturnValue({
+      ...sheets,
+      append: async () => { throw new Error('Failed to append to spreadsheet'); },
+    });
+
+    const error = await syncToCloud(mockSession, { ...mockSettings, spreadsheetId: '', spreadsheetName: 'New Receipts' }, mockToken).catch((e) => e);
+
+    expect(error.synced.spreadsheetId).toMatch(/^memory-sheet-/);
   });
 
   it.each([
@@ -159,50 +141,9 @@ describe('syncService', () => {
   });
 
   it('skips Drive upload if already uploaded', async () => {
-    const sessionWithDrive = { ...mockSession, driveFileId: 'existing-id' };
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A10:J10');
-
-    await syncToCloud(sessionWithDrive, mockSettings, mockToken);
+    await syncToCloud({ ...mockSession, driveFileId: 'existing-id' }, mockSettings, mockToken);
 
     expect(driveService.uploadFileToDrive).not.toHaveBeenCalled();
-    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalled();
-  });
-
-  it('matches detected Date column format from recipient spreadsheet without text quote', async () => {
-    vi.mocked(sheetsService.detectSpreadsheetDateFormat).mockResolvedValue({
-      pattern: 'YYYY-MM-DD',
-      sheetsPattern: 'yyyy-mm-dd',
-      columnIndex: 0,
-      sheetId: 0,
-      sheetTitle: 'Purchases'
-    });
-    vi.mocked(sheetsService.appendToSpreadsheet).mockResolvedValue('Purchases!A5:J5');
-
-    const fixedSession = {
-      ...mockSession,
-      createdAt: '2024-05-20T14:30:00.000Z'
-    };
-
-    await syncToCloud(fixedSession, mockSettings, mockToken);
-
-    expect(sheetsService.detectSpreadsheetDateFormat).toHaveBeenCalledWith(mockToken, 'sheet-123', 'Purchases');
-    expect(sheetsService.appendToSpreadsheet).toHaveBeenCalledWith(
-      mockToken,
-      'sheet-123',
-      expect.arrayContaining([
-        expect.arrayContaining([
-          '2024-05-20', // Matches YYYY-MM-DD pattern and NOT text with quote
-        ])
-      ])
-    );
-    expect(sheetsService.ensureDateColumnFormat).toHaveBeenCalledWith(
-      mockToken,
-      'sheet-123',
-      0,
-      0,
-      'yyyy-mm-dd',
-      4,
-      5
-    );
+    expect(sheets.tab('sheet-123', 'Purchases')).toHaveLength(1);
   });
 });
