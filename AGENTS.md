@@ -1,3 +1,7 @@
+## Done means
+
+`npm run check` passes: it runs what CI runs (typecheck plus tests with coverage floors). `npm test` alone skips the coverage floors.
+
 ## Agent skills
 
 ### Issue tracker
