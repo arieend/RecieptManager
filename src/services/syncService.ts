@@ -64,7 +64,7 @@ export const syncToCloud = async (
         result.spreadsheetId = spreadsheetId;
       }
 
-      const appended = await sheet.append(spreadsheetId, session, result);
+      const appended = await sheet.append(spreadsheetId, session, { driveLink: result.driveLink, driveFileName: result.driveFileName });
       result.spreadsheetLink = appended.spreadsheetLink;
       if (appended.itemLinks) result.itemSheetsLinks = appended.itemLinks;
     } catch (error) {

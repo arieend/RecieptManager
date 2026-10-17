@@ -64,6 +64,10 @@ export const findSpreadsheetByName = async (token: string, name: string): Promis
   });
 
   const data = await response.json();
+  // A failed search must not read as "not found", or the caller creates a duplicate.
+  if (!response.ok) {
+    throw Object.assign(new Error(data.error?.message || 'Failed to search for spreadsheet'), { status: response.status });
+  }
   if (data.files && data.files.length > 0) {
     return data.files[0].id;
   }
