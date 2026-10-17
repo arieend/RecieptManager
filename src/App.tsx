@@ -38,10 +38,12 @@ import { ConfirmModal } from './components/Modal';
 import { ParsingReview } from './components/ParsingReview';
 import { MonthlySummaryView } from './components/MonthlySummaryView';
 
+const rateLookup = createFrankfurterRateLookup();
+
 const receiptIntake = createReceiptIntake({
   parser: parseReceiptImage,
   prepare: prepareReceiptImage,
-  rateLookup: createFrankfurterRateLookup(),
+  rateLookup,
   now: Date.now,
   newId: () => crypto.randomUUID(),
 });
@@ -682,6 +684,7 @@ export default function App() {
             <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
               <ParsingReview 
                 session={reviewSession}
+                rateLookup={rateLookup}
                 onConfirm={handleConfirmReview}
                 onRescan={handleRescanReview}
                 onCancel={handleCancelReview}

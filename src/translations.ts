@@ -186,6 +186,10 @@ export interface Translations {
   thisMonth: string;
   customPeriod: string;
   vsPreviousYear: string;
+  rateToIlsLabel: string;
+  acceptRate: string;
+  rateAccepted: string;
+  rateUnknown: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -375,6 +379,10 @@ export const translations: Record<Language, Translations> = {
     thisMonth: "This Month",
     customPeriod: "Choose Month & Year",
     vsPreviousYear: "vs previous year",
+    rateToIlsLabel: "Rate to ILS",
+    acceptRate: "Accept rate",
+    rateAccepted: "Rate accepted",
+    rateUnknown: "Rate unknown: enter it to confirm",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -562,5 +570,9 @@ export const translations: Record<Language, Translations> = {
     thisMonth: "חודש נוכחי",
     customPeriod: "בחר שנה וחודש",
     vsPreviousYear: "לעומת שנה קודמת",
+    rateToIlsLabel: "שער לשקל",
+    acceptRate: "אשר שער",
+    rateAccepted: "השער אושר",
+    rateUnknown: "השער לא ידוע: הזן אותו כדי לאשר",
   }
 };
