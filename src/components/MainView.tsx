@@ -3,6 +3,7 @@ import { Camera, FileUp, History, AlertCircle, ExternalLink, TrendingUp, PieChar
 import { motion } from 'motion/react';
 import { translations, Language, Translations } from '../translations';
 import { Session } from '../types';
+import { sessionTotal } from '../utils/money';
 import { StorageSettings, getCurrencySymbol } from '../services/configService';
 import { Button } from './ui/Base';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -37,7 +38,7 @@ export const MainView: React.FC<MainViewProps> = ({
     const now = new Date();
     const currentPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const thisMonthSessions = history.filter(s => s.createdAt && s.createdAt.startsWith(currentPrefix));
-    return thisMonthSessions.reduce((sum, s) => sum + (Number(s.total) || 0) * (s.currency === 'USD' ? (s.exchangeRate || 3.7) : s.currency === 'EUR' ? (s.exchangeRate || 4.0) : 1), 0);
+    return thisMonthSessions.reduce((sum, s) => sum + sessionTotal(s).ils, 0);
   }, [history]);
 
   return (

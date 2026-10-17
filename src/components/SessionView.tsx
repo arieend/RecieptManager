@@ -305,8 +305,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
           language={language} 
           translations={translations} 
           currencySymbol={session.currency === 'ILS' ? '₪' : session.currency === 'USD' ? '$' : '€'}
-          currency={session.currency}
-          exchangeRate={session.exchangeRate}
+          session={session}
         />
 
         {/* People Section */}
@@ -355,8 +354,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 item={item} 
                 people={session.people} 
                 currencySymbol={session.currency === 'ILS' ? '₪' : session.currency === 'USD' ? '$' : '€'}
-                currency={session.currency}
-                exchangeRate={session.exchangeRate}
+                session={session}
                 onToggleAssignment={toggleAssignment} 
                 onUpdateQuantity={updateQuantity}
                 translations={translations[language]}

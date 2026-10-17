@@ -47,8 +47,7 @@ describe('SummaryCard', () => {
     language: 'en' as const,
     translations: translations,
     currencySymbol: '$',
-    currency: 'USD' as const,
-    exchangeRate: 3.5,
+    session: { currency: 'USD' as const, exchangeRate: 3.5 },
   };
 
   it('renders total amount correctly', () => {
