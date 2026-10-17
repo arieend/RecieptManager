@@ -2,6 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
+import { syncToCloud } from './services/syncService';
 
 // Mock Firebase
 vi.mock('firebase/app', () => ({
@@ -123,6 +124,16 @@ vi.mock('./services/geminiService', () => ({
   transcribeStoreName: vi.fn(),
 }));
 
+vi.mock('./services/syncService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./services/syncService')>()),
+  syncToCloud: vi.fn(async () => ({
+    driveFileId: 'file-1',
+    driveLink: 'https://drive.google.com/file/d/file-1/view',
+    driveFileName: 'receipt.jpg',
+    spreadsheetLink: 'https://docs.google.com/spreadsheets/d/sheet-1/edit',
+  })),
+}));
+
 describe('App Camera Functionality', () => {
   it('triggers the scanner when "Take Photo" is clicked', async () => {
     // Mock getUserMedia
@@ -181,4 +192,25 @@ describe('App Camera Functionality', () => {
     const storeInput = await screen.findByDisplayValue(/Mock Store/i, {}, { timeout: 3000 });
     expect(storeInput).toBeInTheDocument();
   });
+});
+
+describe('Saving a receipt', () => {
+  it('appends its rows to the Purchases sheet once when auto-save files it and the user then presses Save', async () => {
+    localStorage.setItem('drive_token', 'mock-token');
+    localStorage.setItem('drive_token_timestamp', String(Date.now()));
+    global.URL.createObjectURL = vi.fn(() => 'blob:mock');
+    render(<App />);
+    const inputs = document.querySelectorAll('input[type="file"]');
+    const fileInput = Array.from(inputs).find(input => !input.getAttribute('capture')) as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(['(⌐□_□)'], 'receipt.png', { type: 'image/png' })] } });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }, { timeout: 5000 }));
+    await waitFor(() => expect(syncToCloud).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/Later edits don't reach it/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument());
+    const sheetWrites = vi.mocked(syncToCloud).mock.calls.filter(([, settings]) => settings.syncToSheets);
+    expect(sheetWrites).toHaveLength(1);
+  }, 15000);
 });

@@ -12,6 +12,7 @@ import { Language, Translations } from '../translations';
 import { StorageSettings } from '../services/configService';
 import { categorizeItems } from '../services/geminiService';
 import { RateLookup, withCurrency } from '../services/rateLookup';
+import { isOnPurchasesSheet } from '../services/receiptFiling';
 import { SummaryCard } from './SummaryCard';
 import { ItemCard } from './ItemCard';
 import { calculateTotals } from '../utils/calculations';
@@ -275,7 +276,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32">
-        {session.spreadsheetLink && (
+        {isOnPurchasesSheet(session) && (
           <p className="flex items-center gap-2 px-4 text-[10px] font-medium text-slate-500 dark:text-slate-400">
             <Table size={14} className="shrink-0 text-emerald-500" />
             <span>{translations[language].sheetKeepsFiledRows}</span>

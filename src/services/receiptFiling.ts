@@ -35,6 +35,9 @@ const classifySyncFailure = (error: unknown): SyncFailureKind => {
   return 'sync-failed';
 };
 
+/** A Session is on the Purchases sheet once an append set its `spreadsheetLink`; it is never appended again (ADR-0004). */
+export const isOnPurchasesSheet = (session: Session): boolean => !!session.spreadsheetLink;
+
 /** Missing image and links are saved as "", the shape stored Sessions have always had. */
 const withLinks = (session: Session, result: SyncResult = {}): Session => ({
   ...session,
@@ -49,6 +52,23 @@ const withLinks = (session: Session, result: SyncResult = {}): Session => ({
   })),
 });
 
+/**
+ * The links a filing saved, put on the Session the user still has open, which may have been edited meanwhile.
+ * Saving that Session again then knows it is already on Drive and on the Purchases sheet.
+ */
+export const withSavedLinks = (open: Session, saved: Session): Session => {
+  const savedSheetsLinks = new Map(saved.items.map((item) => [item.id, item.sheetsLink]));
+  return {
+    ...open,
+    userId: saved.userId,
+    driveFileId: saved.driveFileId,
+    driveLink: saved.driveLink,
+    driveFileName: saved.driveFileName,
+    spreadsheetLink: saved.spreadsheetLink,
+    items: open.items.map((item) => ({ ...item, sheetsLink: savedSheetsLinks.get(item.id) || item.sheetsLink })),
+  };
+};
+
 /** The spreadsheet ID is reported only when sync found or created one. */
 const withSpreadsheetId = (outcome: FilingOutcome, spreadsheetId?: string): FilingOutcome =>
   spreadsheetId ? { ...outcome, spreadsheetId } : outcome;
@@ -58,7 +78,7 @@ export const createReceiptFiling = ({ sync, store }: ReceiptFilingDeps) => {
     const { driveToken } = context;
     // An Unconfirmed rate never reaches the Purchases sheet (ADR-0003), and a Session already on it
     // never reaches it again (ADR-0004); Drive still gets the image.
-    const keepOffSheet = isRateUnconfirmed(session) || !!session.spreadsheetLink;
+    const keepOffSheet = isRateUnconfirmed(session) || isOnPurchasesSheet(session);
     const settings = keepOffSheet ? { ...context.settings, syncToSheets: false } : context.settings;
     const imageNeedsUpload = !!session.imageUrl && !session.driveFileId;
     if (!driveToken || !(imageNeedsUpload || settings.syncToSheets)) {

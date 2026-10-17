@@ -3,7 +3,7 @@ import { Session } from '../types';
 import { StorageSettings } from './configService';
 import { createSessionStore, createInMemorySessionAdapter } from './sessionStore';
 import { SyncResult, SheetsSyncError } from './syncService';
-import { createReceiptFiling, ReceiptSync } from './receiptFiling';
+import { createReceiptFiling, ReceiptSync, withSavedLinks } from './receiptFiling';
 
 const session = (overrides: Partial<Session> = {}): Session => ({
   id: 'draft-1',
@@ -159,13 +159,7 @@ describe('Receipt filing', () => {
     expect(sync.calls.map((call) => call[1].syncToSheets)).toEqual([false, true]);
   });
 
-  const onSheet = (overrides: Partial<Session> = {}) => session({
-    driveFileId: synced.driveFileId,
-    driveLink: synced.driveLink,
-    driveFileName: synced.driveFileName,
-    spreadsheetLink: synced.spreadsheetLink,
-    ...overrides,
-  });
+  const onSheet = (overrides: Partial<Session> = {}) => session({ ...uploaded, spreadsheetLink: synced.spreadsheetLink, ...overrides });
 
   it('never asks sync to write to Sheets for a Session already on the Purchases sheet', async () => {
     const sync = fakeSync();
@@ -321,6 +315,7 @@ describe('Receipt filing', () => {
 
     await filing.file('user-1', outcome.saved, { settings: settings(), driveToken: 'token' });
     expect(sync.calls[1][0].driveFileId).toBe('file-1');
+    expect(sync.calls[1][1].syncToSheets).toBe(true);
   });
 
   it('reports the Sheets failure kind when Sheets fails after the Drive upload', async () => {
@@ -341,5 +336,19 @@ describe('Receipt filing', () => {
     const outcome = await filing.file('user-1', session(), { settings: settings({ spreadsheetId: '' }), driveToken: 'token' });
 
     expect(outcome.spreadsheetId).toBe('sheet-new');
+  });
+});
+
+describe('withSavedLinks', () => {
+  it('gives the open Session the links its filing saved, keeping edits made meanwhile', async () => {
+    const { filing } = setup();
+    const draft = session();
+    const { saved } = await filing.file('user-1', draft, { settings: settings(), driveToken: 'token' });
+    const edited = { ...draft, storeName: 'Edited', items: [...draft.items, { id: 'item-3', name: 'Eggs', price: 12, quantity: 1, assignedTo: [] }] };
+
+    const open = withSavedLinks(edited, saved);
+
+    expect(open).toMatchObject({ storeName: 'Edited', userId: 'user-1', ...uploaded, spreadsheetLink: synced.spreadsheetLink });
+    expect(open.items.map((i) => i.sheetsLink)).toEqual([...Object.values(synced.itemSheetsLinks!), undefined]);
   });
 });

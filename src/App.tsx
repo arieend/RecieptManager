@@ -21,7 +21,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
 import { createPurchasesSheet } from './services/purchasesSheet';
 import { createGoogleSheetsAdapter } from './services/googleSheetsAdapter';
-import { createReceiptFiling, SyncFailureKind } from './services/receiptFiling';
+import { createReceiptFiling, SyncFailureKind, withSavedLinks } from './services/receiptFiling';
 import { 
   getSettings, saveSettings, StorageSettings,
   getCurrencySymbol
@@ -351,7 +351,8 @@ export default function App() {
         const draft = await receiptIntake.intake(file, user.uid);
 
         // A batch has no review step, so it always saves; auto-save only governs the review screen.
-        if (await saveSession(draft)) results.push(draft);
+        const saved = await saveSession(draft);
+        if (saved) results.push(saved);
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err);
       }
@@ -387,14 +388,16 @@ export default function App() {
     return flashToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud', 5000);
   };
 
-  /** Resolves to whether the Session was persisted; failures are reported to the user here. */
-  const saveSession = async (sessionToUse?: Session): Promise<boolean> => {
+  /** Resolves to the saved Session, or null when it wasn't persisted; failures are reported to the user here. */
+  const saveSession = async (sessionToUse?: Session): Promise<Session | null> => {
     const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
-    if (!session || !user) return false;
+    if (!session || !user) return null;
     
     setIsSaving(true);
     try {
-      const { sync, spreadsheetId } = await receiptFiling.file(user.uid, session, { settings, driveToken });
+      const { saved, sync, spreadsheetId } = await receiptFiling.file(user.uid, session, { settings, driveToken });
+      // The open Session takes the saved links, so saving it again knows it is already on Drive and the Purchases sheet (ADR-0004).
+      setCurrentSession((current) => (current?.id === saved.id ? withSavedLinks(current, saved) : current));
 
       if (spreadsheetId) {
         const newSettings = { ...settings, spreadsheetId };
@@ -412,11 +415,11 @@ export default function App() {
         setView('history');
         setCurrentSession(null);
       }
-      return true;
+      return saved;
     } catch (error: unknown) {
       console.error("Session save error:", error);
       setShowToast(language === 'he' ? 'שגיאה בשמירה בבסיס הנתונים' : 'Error saving to database');
-      return false;
+      return null;
     } finally {
       setIsSaving(false);
     }
