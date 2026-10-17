@@ -1,4 +1,5 @@
 import { Session } from '../types';
+import { isRateUnconfirmed } from '../utils/money';
 import type { StorageSettings } from './configService';
 import type { SessionStore } from './sessionStore';
 import { SheetsSyncError, type SyncResult } from './syncService';
@@ -53,7 +54,10 @@ const withSpreadsheetId = (outcome: FilingOutcome, spreadsheetId?: string): Fili
   spreadsheetId ? { ...outcome, spreadsheetId } : outcome;
 
 export const createReceiptFiling = ({ sync, store }: ReceiptFilingDeps) => {
-  const file = async (userId: string, session: Session, { settings, driveToken }: FilingContext): Promise<FilingOutcome> => {
+  const file = async (userId: string, session: Session, context: FilingContext): Promise<FilingOutcome> => {
+    const { driveToken } = context;
+    // An Unconfirmed rate never reaches the Purchases sheet (ADR-0003); Drive still gets the image.
+    const settings = isRateUnconfirmed(session) ? { ...context.settings, syncToSheets: false } : context.settings;
     const imageNeedsUpload = !!session.imageUrl && !session.driveFileId;
     if (!driveToken || !(imageNeedsUpload || settings.syncToSheets)) {
       return { saved: await store.save(userId, withLinks(session)), sync: 'skipped' };
