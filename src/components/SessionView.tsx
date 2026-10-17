@@ -14,6 +14,7 @@ import { categorizeItems, getExchangeRate } from '../services/geminiService';
 import { SummaryCard } from './SummaryCard';
 import { ItemCard } from './ItemCard';
 import { calculateTotals } from '../utils/calculations';
+import { rateToIls } from '../utils/money';
 
 interface SessionViewProps {
   session: Session;
@@ -290,11 +291,11 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <input 
                   type="number"
                   step="0.01"
-                  value={session.exchangeRate ?? 1}
+                  value={rateToIls(session)}
                   onChange={(e) => updateExchangeRate(parseFloat(e.target.value) || 1)}
                   className="w-20 px-2 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500"
                 />
-                <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase">1 {session.currency} = {session.exchangeRate} ₪</span>
+                <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase">1 {session.currency} = {rateToIls(session)} ₪</span>
               </div>
             </div>
           </section>
