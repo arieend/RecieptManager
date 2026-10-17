@@ -42,7 +42,13 @@ describe('syncService', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Sessions with an image upload to Drive unless a test says otherwise.
+    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
+    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
+      id: 'file-123',
+      name: 'Test_Store_20240101_10.00.jpg',
+      webViewLink: 'http://link'
+    });
   });
 
   it('syncs to Drive and Sheets correctly', async () => {

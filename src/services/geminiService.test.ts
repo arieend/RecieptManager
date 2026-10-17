@@ -6,7 +6,7 @@ vi.mock('@google/genai', () => {
   return {
     GoogleGenAI: class {
       models = {
-        generateContent: vi.fn().mockResolvedValue({
+        generateContent: vi.fn(async () => ({
           text: JSON.stringify({
             store_or_brand_name: 'Mock Store',
             store_name_english: 'Mock Store',
@@ -15,7 +15,7 @@ vi.mock('@google/genai', () => {
             tax: 10,
             tip: 5
           })
-        })
+        }))
       };
     },
     Type: {

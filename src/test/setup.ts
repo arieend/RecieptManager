@@ -1,10 +1,12 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mocks take their default via vi.fn(impl): `mockReset` (vite.config.ts) restores it before each test.
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn(query => ({
     matches: false,
     media: query,
     onchange: null,
@@ -24,14 +26,14 @@ window.URL.revokeObjectURL = vi.fn();
 Element.prototype.scrollIntoView = vi.fn();
 
 // Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+global.ResizeObserver = vi.fn(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }));
 
 // Mock Canvas
-HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   drawImage: vi.fn(),
   beginPath: vi.fn(),
   moveTo: vi.fn(),
@@ -49,6 +51,6 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   translate: vi.fn(),
   save: vi.fn(),
   restore: vi.fn(),
-});
+}));
 
-HTMLCanvasElement.prototype.toDataURL = vi.fn().mockReturnValue('data:image/jpeg;base64,mock');
+HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,mock');
