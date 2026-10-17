@@ -25,14 +25,11 @@ We welcome contributions to the Receipt Manager project! This guide explains how
     npm run dev
     ```
 2.  **Write code** and add tests for your changes.
-3.  **Run tests** to ensure everything is working correctly:
+3.  **Run the checks** before you push. This runs exactly what CI runs: the typecheck and the tests with coverage floors.
     ```bash
-    npm test
+    npm run check
     ```
-4.  **Lint your code** to maintain code quality:
-    ```bash
-    npm run lint
-    ```
+    A pre-push hook runs it for you; `npm install` installs the hook. Use `npm test` for a quicker loop while you work.
 
 ## 📝 Coding Guidelines
 
