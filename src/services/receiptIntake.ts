@@ -1,5 +1,6 @@
 import { Person, ReceiptItem, Session } from '../types';
 import { mimeTypeOf } from '../utils/imageUtils';
+import { RateLookup, rateDateOf } from './rateLookup';
 
 export const HOUSEHOLD_PERSON: Person = {
   id: 'person-family',
@@ -17,6 +18,7 @@ export interface RawParsedReceipt {
   tax?: unknown;
   tip?: unknown;
   currency?: unknown;
+  /** No longer asked for, and ignored if present: the rate comes from the Rate lookup. */
   exchange_rate_to_ils?: unknown;
 }
 
@@ -29,6 +31,8 @@ export type ImagePreparer = (input: File | string) => Promise<string>;
 export interface ReceiptIntakeDeps {
   parser: ReceiptParser;
   prepare: ImagePreparer;
+  /** Looks up the published rate for a USD or EUR receipt's date. */
+  rateLookup: RateLookup;
   now: () => number;
   /** Mints the Draft Session's ID, which it keeps once saved. */
   newId: () => string;
@@ -97,7 +101,19 @@ const toItems = (rawItems: unknown): ReceiptItem[] =>
     assignedTo: [HOUSEHOLD_PERSON.id]
   }));
 
-export const createReceiptIntake = ({ parser, prepare, now, newId }: ReceiptIntakeDeps) => {
+export const createReceiptIntake = ({ parser, prepare, rateLookup, now, newId }: ReceiptIntakeDeps) => {
+  /** ILS needs no rate. USD and EUR get the published rate, or null, as an Unconfirmed rate. */
+  const rateFor = async (currency: Session['currency'], createdAt: string) => {
+    if (currency === 'ILS') return { exchangeRate: 1, rateConfirmed: true };
+    let exchangeRate: number | null;
+    try {
+      exchangeRate = await rateLookup(currency, rateDateOf(createdAt));
+    } catch {
+      exchangeRate = null;
+    }
+    return { exchangeRate, rateConfirmed: false };
+  };
+
   const prepareOrFail = async (input: File | string) => {
     try {
       return await prepare(input);
@@ -125,20 +141,22 @@ export const createReceiptIntake = ({ parser, prepare, now, newId }: ReceiptInta
       const dataUrl = await prepareOrFail(input);
       const raw = await parseOrFail(dataUrl);
       const storeName = toText(raw.store_or_brand_name);
+      const createdAt = (parseReceiptDate(raw.transaction_datetime) ?? new Date(now())).toISOString();
+      const currency = toCurrency(raw.currency);
 
       return {
         id: newId(),
         userId,
         storeName: storeName ?? 'unknown',
         englishStoreName: toText(raw.store_name_english) ?? storeName ?? 'unknown',
-        createdAt: (parseReceiptDate(raw.transaction_datetime) ?? new Date(now())).toISOString(),
+        createdAt,
         items: toItems(raw.items),
         people: [HOUSEHOLD_PERSON],
         tax: toNumber(raw.tax, 0),
         tip: toNumber(raw.tip, 0),
         total: toNumber(raw.price, 0),
-        currency: toCurrency(raw.currency),
-        exchangeRate: toNumber(raw.exchange_rate_to_ils, 1),
+        currency,
+        ...(await rateFor(currency, createdAt)),
         imageUrl: dataUrl,
       };
     },

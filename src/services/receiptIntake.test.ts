@@ -1,15 +1,27 @@
 /// <reference types="vite/client" />
 import { describe, it, expect } from 'vitest';
 import { createReceiptIntake, RawParsedReceipt } from './receiptIntake';
+import type { RateLookup } from './rateLookup';
 
 const JPEG = 'data:image/jpeg;base64,abc';
 const NOW = new Date('2026-03-15T09:30:00.000Z').getTime();
 const DRAFT_ID = 'draft-0b7c';
 
-const makeIntake = (response: RawParsedReceipt) =>
+/** A fake Rate lookup: answers from a table and records what it was asked. */
+const fakeRateLookup = (rates: Record<string, number | null> = { USD: 3.1268, EUR: 3.62 }) => {
+  const calls: [string, string][] = [];
+  const lookup: RateLookup = async (currency, date) => {
+    calls.push([currency, date]);
+    return rates[currency] ?? null;
+  };
+  return { lookup, calls };
+};
+
+const makeIntake = (response: RawParsedReceipt, rateLookup: RateLookup = fakeRateLookup().lookup) =>
   createReceiptIntake({
     parser: async () => response,
     prepare: async (input) => input as string,
+    rateLookup,
     now: () => NOW,
     newId: () => DRAFT_ID,
   });
@@ -38,8 +50,65 @@ describe('Receipt intake', () => {
       tax: 17.5,
       tip: 0,
       currency: 'USD',
-      exchangeRate: 3.6,
       imageUrl: JPEG,
+    });
+  });
+
+  describe('exchange rate', () => {
+    it.each([
+      ['USD', 3.1268],
+      ['EUR', 3.62],
+    ])('gives a %s receipt the looked-up rate, unconfirmed', async (currency, rate) => {
+      const draft = await makeIntake({ currency, transaction_datetime: '2026-03-15 10:00:00' }).intake(JPEG, 'user-1');
+
+      expect(draft).toMatchObject({ currency, exchangeRate: rate, rateConfirmed: false });
+    });
+
+    it("asks the Rate lookup for the receipt's date", async () => {
+      const { lookup, calls } = fakeRateLookup();
+
+      await makeIntake({ currency: 'EUR', transaction_datetime: '2026-03-15 23:30:00' }, lookup).intake(JPEG, 'user-1');
+
+      expect(calls).toEqual([['EUR', '2026-03-15']]);
+    });
+
+    it("asks for today's date when the receipt date can't be read", async () => {
+      const { lookup, calls } = fakeRateLookup();
+
+      await makeIntake({ currency: 'USD', transaction_datetime: 'smudged' }, lookup).intake(JPEG, 'user-1');
+
+      const today = new Date(NOW);
+      const expected = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      expect(calls).toEqual([['USD', expected]]);
+    });
+
+    it('leaves the rate unknown when the lookup fails, and intake still succeeds', async () => {
+      const draft = await makeIntake({ currency: 'USD' }, fakeRateLookup({}).lookup).intake(JPEG, 'user-1');
+
+      expect(draft).toMatchObject({ currency: 'USD', exchangeRate: null, rateConfirmed: false });
+    });
+
+    it('leaves the rate unknown when the lookup throws', async () => {
+      const throwing: RateLookup = async () => { throw new Error('boom'); };
+
+      const draft = await makeIntake({ currency: 'EUR' }, throwing).intake(JPEG, 'user-1');
+
+      expect(draft).toMatchObject({ exchangeRate: null, rateConfirmed: false });
+    });
+
+    it('gives an ILS receipt rate 1, confirmed, without a lookup', async () => {
+      const { lookup, calls } = fakeRateLookup();
+
+      const draft = await makeIntake({ currency: 'ILS', exchange_rate_to_ils: 3.6 }, lookup).intake(JPEG, 'user-1');
+
+      expect(draft).toMatchObject({ exchangeRate: 1, rateConfirmed: true });
+      expect(calls).toEqual([]);
+    });
+
+    it("ignores Gemini's exchange_rate_to_ils", async () => {
+      const draft = await makeIntake({ currency: 'USD', exchange_rate_to_ils: 3.9 }).intake(JPEG, 'user-1');
+
+      expect(draft.exchangeRate).toBe(3.1268);
     });
   });
 
@@ -129,6 +198,7 @@ describe('Receipt intake', () => {
     const intake = createReceiptIntake({
       parser: async (dataUrl, mime) => { calls.push([dataUrl, mime]); return {}; },
       prepare: async () => prepared,
+      rateLookup: fakeRateLookup().lookup,
       now: () => NOW,
       newId: () => DRAFT_ID,
     });
@@ -178,6 +248,7 @@ describe('Receipt intake', () => {
       createReceiptIntake({
         parser: async () => ({}),
         prepare: async () => JPEG,
+        rateLookup: fakeRateLookup().lookup,
         now: () => NOW,
         newId: () => DRAFT_ID,
         ...deps,

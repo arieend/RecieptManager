@@ -14,6 +14,7 @@ import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
 import { compressImage, isPdfFile, prepareReceiptImage } from './utils/imageUtils';
 import { createReceiptIntake, ReceiptIntakeError } from './services/receiptIntake';
+import { createFrankfurterRateLookup } from './services/rateLookup';
 import { createSessionStore } from './services/sessionStore';
 import { createFirestoreSessionAdapter } from './services/firestoreSessionAdapter';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -40,6 +41,7 @@ import { MonthlySummaryView } from './components/MonthlySummaryView';
 const receiptIntake = createReceiptIntake({
   parser: parseReceiptImage,
   prepare: prepareReceiptImage,
+  rateLookup: createFrankfurterRateLookup(),
   now: Date.now,
   newId: () => crypto.randomUUID(),
 });

@@ -16,7 +16,6 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
     - tax: The tax amount (number).
     - tip: The tip amount (number, if present, otherwise 0).
     - currency: The currency of the receipt. One of: "ILS", "USD", "EUR". If not clear, default to "ILS".
-    - exchange_rate_to_ils: The current exchange rate from the receipt's currency to Israeli Shekels (ILS). If the currency is ILS, this should be 1.0.
 
     Return ONLY the JSON object.
   `;
@@ -64,10 +63,9 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
           },
           tax: { type: Type.NUMBER },
           tip: { type: Type.NUMBER },
-          currency: { type: Type.STRING, enum: ["ILS", "USD", "EUR"] },
-          exchange_rate_to_ils: { type: Type.NUMBER }
+          currency: { type: Type.STRING, enum: ["ILS", "USD", "EUR"] }
         },
-        required: ["store_or_brand_name", "store_name_english", "price", "items", "tax", "tip", "currency", "exchange_rate_to_ils"]
+        required: ["store_or_brand_name", "store_name_english", "price", "items", "tax", "tip", "currency"]
       }
     }
   });
