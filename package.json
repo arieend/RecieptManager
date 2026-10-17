@@ -11,6 +11,8 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
+    "check": "npm run lint && npm run test:coverage",
+    "prepare": "git config core.hooksPath .githooks || true",
     "capture:gemini": "node --experimental-strip-types --env-file-if-exists=.env scripts/capture-gemini-fixture.mjs"
   },
   "dependencies": {
