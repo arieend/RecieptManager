@@ -238,3 +238,46 @@ describe('An expired Google access token', () => {
     expect(screen.getByTitle('Connect Google Drive')).toBeInTheDocument();
   });
 });
+
+describe('A Google access token that outlives 55 minutes while App is open', () => {
+  // Only Date is faked: the parsing mock and Testing Library's waits still run on real timers.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const googleAccessKeys = () => [localStorage.getItem('drive_token'), localStorage.getItem('drive_token_timestamp')];
+  const passFiftyFiveMinutes = () => vi.setSystemTime(Date.now() + 55 * 60 * 1000);
+
+  it('is not used for Receipt filing, and the header asks to connect Drive again', async () => {
+    vi.mocked(syncToCloud).mockClear();
+    signInWithDrive();
+    render(<App />);
+    passFiftyFiveMinutes();
+    uploadReceipt();
+
+    await confirmReview();
+
+    expect(await screen.findByTitle('Connect Google Drive')).toBeInTheDocument();
+    expect(syncToCloud).not.toHaveBeenCalled();
+    expect(googleAccessKeys()).toEqual([null, null]);
+  }, 15000);
+
+  it('is not used to connect a spreadsheet, and the header asks to connect Drive again', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    signInWithDrive();
+    render(<App />);
+    passFiftyFiveMinutes();
+
+    fireEvent.click(screen.getByTitle('Connect Google Sheets'));
+
+    expect(await screen.findByTitle('Connect Google Drive')).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(googleAccessKeys()).toEqual([null, null]);
+  });
+});

@@ -60,7 +60,7 @@ const sessionStore = createSessionStore({
 
 const receiptFiling = createReceiptFiling({ sync: syncToCloud, store: sessionStore });
 
-const googleAccess = createGoogleAccess({ storage: localStorage, now: Date.now });
+const googleAccess = createGoogleAccess({ storage: localStorage, now: () => Date.now() });
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -81,7 +81,6 @@ export default function App() {
   const [processingQueue, setProcessingQueue] = useState<File[]>([]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const google = useGoogleAccess(googleAccess);
-  const driveToken = google.token;
   const [settings, setSettings] = useState<StorageSettings>(getSettings());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -273,6 +272,7 @@ export default function App() {
   };
 
   const handleConnectSpreadsheet = async () => {
+    const driveToken = google.current();
     if (!driveToken) {
       handleLogin();
       return;
@@ -387,7 +387,7 @@ export default function App() {
     
     setIsSaving(true);
     try {
-      const { saved, sync, spreadsheetId } = await receiptFiling.file(user.uid, session, { settings, driveToken });
+      const { saved, sync, spreadsheetId } = await receiptFiling.file(user.uid, session, { settings, driveToken: google.current() });
       // The open Session takes the saved links, so saving it again knows it is already on Drive and the Purchases sheet (ADR-0004).
       setCurrentSession((current) => (current?.id === saved.id ? withSavedLinks(current, saved) : current));
 
@@ -585,7 +585,7 @@ export default function App() {
           translations={translations}
           spreadsheetId={settings.spreadsheetId}
           spreadsheetName={settings.spreadsheetName}
-          isDriveConnected={!!driveToken}
+          isDriveConnected={!!google.token}
           onReconnectDrive={handleLogin}
           onCreateSpreadsheet={handleConnectSpreadsheet}
           isCreatingSpreadsheet={isSaving}
@@ -647,7 +647,7 @@ export default function App() {
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}
-                isDriveConnected={!!driveToken}
+                isDriveConnected={!!google.token}
                 onReconnectDrive={handleLogin}
                 settings={settings}
               />
@@ -734,7 +734,7 @@ export default function App() {
                 onBack={() => setView('main')}
                 onLogout={handleLogout}
                 onReconnectDrive={handleLogin}
-                isDriveConnected={!!driveToken}
+                isDriveConnected={!!google.token}
                 translations={translations}
                 language={language}
                 deferredPrompt={deferredPrompt}
