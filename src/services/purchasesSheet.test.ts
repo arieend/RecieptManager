@@ -59,6 +59,14 @@ describe('Purchases sheet', () => {
       expect(await sheet.connect('Receipts Database')).toEqual({ spreadsheetId: 'existing', created: false });
     });
 
+    it('creates nothing when the search by name fails', async () => {
+      const searchFailure = Object.assign(new Error('Backend Error'), { status: 503 });
+      sheet = createPurchasesSheet({ ...memory, findByName: async () => { throw searchFailure; } });
+
+      await expect(sheet.connect('Receipts Database')).rejects.toBe(searchFailure);
+      expect(await memory.findByName('Receipts Database')).toBeNull();
+    });
+
     it('still connects when the date format cannot be applied', async () => {
       sheet = createPurchasesSheet({ ...memory, formatDates: async () => { throw new Error('quota'); } });
 
@@ -213,14 +221,14 @@ describe('Purchases sheet', () => {
       expect(memory.tab('unreadable', 'Purchases')[0][0]).toBe('05/20/2024');
     });
 
-    it('falls back to the Purchases tab and the default format when the sheet cannot be described', async () => {
+    it('falls back to the Purchases tab and the default format, without row links, when the sheet cannot be described', async () => {
       memory.seed('opaque', { name: 'Receipts', tabs: [{ sheetId: 9, title: 'Purchases', rows: [] }] });
       sheet = createPurchasesSheet({ ...memory, describe: async () => { throw new Error('forbidden'); } });
 
-      const { itemLinks } = await sheet.append('opaque', session());
+      const appended = await sheet.append('opaque', session());
 
       expect(memory.tab('opaque', 'Purchases')[0][0]).toBe('20/05/2024');
-      expect(itemLinks?.i1).toMatch(/#gid=0&range=A1$/);
+      expect(appended).toEqual({ spreadsheetLink: 'https://docs.google.com/spreadsheets/d/opaque/edit' });
       expect(memory.dateFormats).toEqual([]);
     });
 

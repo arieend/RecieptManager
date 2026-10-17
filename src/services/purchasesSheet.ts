@@ -204,7 +204,7 @@ export interface ReceiptLinks {
 
 export interface Appended {
   spreadsheetLink: string;
-  /** Each ReceiptItem's row, by item ID; missing when the adapter couldn't say where the rows landed. */
+  /** Each ReceiptItem's row, by item ID; missing when the rows' position or their tab is unknown. */
   itemLinks?: Record<string, string>;
 }
 
@@ -276,10 +276,11 @@ export const createPurchasesSheet = (adapter: SpreadsheetAdapter) => {
     }
 
     const spreadsheetLink = spreadsheetLinkOf(spreadsheetId);
-    if (!span) return { spreadsheetLink };
+    // A row link needs both the rows and the tab; a guessed tab would link to the wrong rows.
+    if (!span || sheetId === undefined) return { spreadsheetLink };
 
     const itemLinks = Object.fromEntries(
-      session.items.map((item, index) => [item.id, `${spreadsheetLink}#gid=${sheetId ?? 0}&range=A${span.firstRow + index}`]),
+      session.items.map((item, index) => [item.id, `${spreadsheetLink}#gid=${sheetId}&range=A${span.firstRow + index}`]),
     );
     return { spreadsheetLink, itemLinks };
   };
