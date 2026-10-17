@@ -193,6 +193,7 @@ export interface Translations {
   rateAccepted: string;
   rateUnknown: string;
   ilsEstimated: string;
+  batchProcessed: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -383,12 +384,13 @@ export const translations: Record<Language, Translations> = {
     customPeriod: "Choose Month & Year",
     vsPreviousYear: "vs previous year",
     waitingForRate: "Waiting for rate",
-    batchWaitingForRate: "{count} waiting for an exchange rate",
+    batchWaitingForRate: "Successfully processed {count} receipts · {waiting} waiting for an exchange rate",
     rateToIlsLabel: "Rate to ILS",
     acceptRate: "Accept rate",
     rateAccepted: "Rate accepted",
     rateUnknown: "Rate unknown: enter it to confirm",
     ilsEstimated: "₪ amounts are estimated until you confirm the rate",
+    batchProcessed: "Successfully processed {count} receipts",
   },
   he: {
     appTitle: "מנהל חשבוניות",
@@ -577,11 +579,12 @@ export const translations: Record<Language, Translations> = {
     customPeriod: "בחר שנה וחודש",
     vsPreviousYear: "לעומת שנה קודמת",
     waitingForRate: "ממתין לשער",
-    batchWaitingForRate: "{count} ממתינות לשער חליפין",
+    batchWaitingForRate: "עובדו {count} קבלות בהצלחה · {waiting} ממתינות לשער חליפין",
     rateToIlsLabel: "שער לשקל",
     acceptRate: "אשר שער",
     rateAccepted: "השער אושר",
     rateUnknown: "השער לא ידוע: הזן אותו כדי לאשר",
     ilsEstimated: "הסכומים בשקלים משוערים עד שתאשר את השער",
+    batchProcessed: "עובדו {count} קבלות בהצלחה",
   }
 };

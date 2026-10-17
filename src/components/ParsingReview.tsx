@@ -6,6 +6,7 @@ import { Language, Translations } from '../translations';
 import { Button, Input } from './ui/Base';
 import { getCurrencySymbol } from '../services/configService';
 import { RateLookup, rateDateOf } from '../services/rateLookup';
+import { isUsableRate } from '../utils/money';
 
 interface ParsingReviewProps {
   session: Session;
@@ -30,27 +31,37 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
   const suggested: number | null = session.exchangeRate;
   const [rateText, setRateText] = useState(suggested === null ? '' : String(suggested));
   const [rateAccepted, setRateAccepted] = useState(false);
-  // Bumped by each date change and each typed rate, so a stale lookup can't overwrite either.
+  // True while the lookup for a new date is out: the rate is unconfirmed and can't be accepted yet.
+  const [ratePending, setRatePending] = useState(false);
+  // Bumped by each date change, typed rate and accept, so a stale lookup can't overwrite any of them.
   const rateEdit = useRef(0);
 
   const enteredRate = Number(rateText);
-  const isRatePositive = rateText.trim() !== '' && Number.isFinite(enteredRate) && enteredRate > 0;
+  const isRatePositive = isUsableRate(enteredRate);
   const canConfirm = !isForeign || (rateAccepted && isRatePositive);
 
   const handleRateChange = (text: string) => {
     rateEdit.current += 1;
+    setRatePending(false);
     setRateText(text);
-    const value = Number(text);
     // Entering a positive rate confirms it, the same as accepting the suggestion.
-    setRateAccepted(text.trim() !== '' && Number.isFinite(value) && value > 0);
+    setRateAccepted(isUsableRate(Number(text)));
+  };
+
+  const handleAcceptRate = () => {
+    rateEdit.current += 1;
+    setRatePending(false);
+    setRateAccepted(true);
   };
 
   const lookUpRateFor = (createdAt: string) => {
     if (session.currency === 'ILS') return;
     const edit = ++rateEdit.current;
     setRateAccepted(false);
+    setRatePending(true);
     rateLookup(session.currency, rateDateOf(createdAt)).then((rate) => {
       if (edit !== rateEdit.current) return;
+      setRatePending(false);
       setRateText(rate === null ? '' : String(rate));
     });
   };
@@ -177,8 +188,8 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
                 />
                 <Button
                   variant={rateAccepted ? 'secondary' : 'primary'}
-                  onClick={() => setRateAccepted(true)}
-                  disabled={!isRatePositive || rateAccepted}
+                  onClick={handleAcceptRate}
+                  disabled={!isRatePositive || rateAccepted || ratePending}
                   className="h-12 shrink-0"
                   leftIcon={<Check size={16} />}
                 >

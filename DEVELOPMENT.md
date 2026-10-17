@@ -10,7 +10,7 @@ Receipt Manager is a React Single Page Application (SPA) that leverages Firebase
 
 Terms (Session, Draft Session, Receipt intake, …) are defined in [`GLOSSARY.md`](GLOSSARY.md). Each step names the module that owns it:
 
-1.  **Receipt intake** (`services/receiptIntake.ts`): an upload or camera capture becomes a Draft Session. Image preparation (`utils/imageUtils.ts` → `prepareReceiptImage`) and the Gemini receipt parser (`services/geminiService.ts`) are passed in from `App.tsx`.
+1.  **Receipt intake** (`services/receiptIntake.ts`): an upload or camera capture becomes a Draft Session. Image preparation (`utils/imageUtils.ts` → `prepareReceiptImage`) the Gemini receipt parser (`services/geminiService.ts`) and the Rate lookup (`services/rateLookup.ts` → `createFrankfurterRateLookup`) are passed in from `App.tsx`.
 2.  **Review and edit** (`components/ParsingReview.tsx`, `components/SessionView.tsx`): the user checks the draft, assigns items, adjusts totals.
 3.  **Receipt filing** (`services/receiptFiling.ts`): `App.tsx` → `saveSession` files the Session in one call, then turns the outcome into toasts and settings updates.
     1.  **Cloud sync** (`services/syncService.ts`), when there is a Drive token and either the image is not on Drive yet or Sheets sync is on: the receipt image goes to Google Drive (`services/driveService.ts`), then one row per ReceiptItem to the **Purchases sheet** (`services/purchasesSheet.ts`, over the Google Sheets adapter in `services/googleSheetsAdapter.ts`). `App.tsx` → `handleConnectSpreadsheet` finds or creates the spreadsheet through the same module. A Drive upload that finished is kept even if Sheets then fails.

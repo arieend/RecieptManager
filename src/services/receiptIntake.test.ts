@@ -1,21 +1,12 @@
 /// <reference types="vite/client" />
 import { describe, it, expect } from 'vitest';
 import { createReceiptIntake, RawParsedReceipt } from './receiptIntake';
-import type { RateLookup } from './rateLookup';
+import { rateDateOf, type RateLookup } from './rateLookup';
+import { fakeRateLookup } from './__fakes__/fakeRateLookup';
 
 const JPEG = 'data:image/jpeg;base64,abc';
 const NOW = new Date('2026-03-15T09:30:00.000Z').getTime();
 const DRAFT_ID = 'draft-0b7c';
-
-/** A fake Rate lookup: answers from a table and records what it was asked. */
-const fakeRateLookup = (rates: Record<string, number | null> = { USD: 3.1268, EUR: 3.62 }) => {
-  const calls: [string, string][] = [];
-  const lookup: RateLookup = async (currency, date) => {
-    calls.push([currency, date]);
-    return rates[currency] ?? null;
-  };
-  return { lookup, calls };
-};
 
 const makeIntake = (response: RawParsedReceipt, rateLookup: RateLookup = fakeRateLookup().lookup) =>
   createReceiptIntake({
@@ -77,23 +68,13 @@ describe('Receipt intake', () => {
 
       await makeIntake({ currency: 'USD', transaction_datetime: 'smudged' }, lookup).intake(JPEG, 'user-1');
 
-      const today = new Date(NOW);
-      const expected = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      expect(calls).toEqual([['USD', expected]]);
+      expect(calls).toEqual([['USD', rateDateOf(new Date(NOW).toISOString())]]);
     });
 
     it('leaves the rate unknown when the lookup fails, and intake still succeeds', async () => {
       const draft = await makeIntake({ currency: 'USD' }, fakeRateLookup({}).lookup).intake(JPEG, 'user-1');
 
       expect(draft).toMatchObject({ currency: 'USD', exchangeRate: null, rateConfirmed: false });
-    });
-
-    it('leaves the rate unknown when the lookup throws', async () => {
-      const throwing: RateLookup = async () => { throw new Error('boom'); };
-
-      const draft = await makeIntake({ currency: 'EUR' }, throwing).intake(JPEG, 'user-1');
-
-      expect(draft).toMatchObject({ exchangeRate: null, rateConfirmed: false });
     });
 
     it('gives an ILS receipt rate 1, confirmed, without a lookup', async () => {

@@ -37,7 +37,7 @@ import { ProfileView } from './components/ProfileView';
 import { ConfirmModal } from './components/Modal';
 import { ParsingReview } from './components/ParsingReview';
 import { MonthlySummaryView } from './components/MonthlySummaryView';
-import { isRateUnconfirmed } from './utils/money';
+import { isRateUnconfirmed, isUsableRate } from './utils/money';
 
 const rateLookup = createFrankfurterRateLookup();
 
@@ -365,9 +365,9 @@ export default function App() {
       setView('session');
     } else if (results.length > 1) {
       setView('history');
-      const processed = language === 'he' ? `עובדו ${results.length} קבלות בהצלחה` : `Successfully processed ${results.length} receipts`;
       const waiting = results.filter(isRateUnconfirmed).length;
-      setShowToast(waiting > 0 ? `${processed} · ${t.batchWaitingForRate.replace('{count}', String(waiting))}` : processed);
+      const message = waiting > 0 ? t.batchWaitingForRate : t.batchProcessed;
+      setShowToast(message.replace('{count}', String(results.length)).replace('{waiting}', String(waiting)));
     }
   };
 
@@ -514,7 +514,7 @@ export default function App() {
         });
       } else if (result.action === 'change_currency' && result.currency) {
         setCurrentSession(await withCurrency(currentSession, result.currency, rateLookup));
-      } else if (result.action === 'update_rate' && Number(result.rate) > 0) {
+      } else if (result.action === 'update_rate' && isUsableRate(Number(result.rate))) {
         // A rate the user gives through chat is theirs, so it confirms the Session's rate.
         setCurrentSession({ ...currentSession, exchangeRate: Number(result.rate), rateConfirmed: true });
       } else {

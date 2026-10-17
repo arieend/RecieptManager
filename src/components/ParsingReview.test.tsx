@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ParsingReview } from './ParsingReview';
 import { translations } from '../translations';
@@ -101,6 +101,48 @@ describe('ParsingReview', () => {
     fireEvent.click(screen.getByRole('button', { name: t.acceptRate }));
     fireEvent.click(confirmButton());
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: 3.2001, rateConfirmed: true }));
+  });
+
+  describe('while the lookup for a new date is pending', () => {
+    /** A Rate lookup that answers only when the test says so. */
+    const pendingLookup = () => {
+      let answer: (rate: number | null) => void = () => {};
+      const lookup = vi.fn<RateLookup>(() => new Promise((resolve) => { answer = resolve; }));
+      return { lookup, answer: (rate: number | null) => act(async () => answer(rate)) };
+    };
+    const acceptButton = () => screen.getByRole('button', { name: new RegExp(`${t.acceptRate}|${t.rateAccepted}`) });
+
+    it('keeps the rate unconfirmed with Accept off, and a typed rate survives the late result', async () => {
+      const { lookup, answer } = pendingLookup();
+      const { onConfirm } = renderReview(draft(), lookup);
+      fireEvent.click(acceptButton());
+
+      fireEvent.change(screen.getByLabelText(t.transactionDate), { target: { value: '2026-03-15' } });
+      expect(acceptButton()).toBeDisabled();
+      expect(confirmButton()).toBeDisabled();
+
+      fireEvent.change(rateField(), { target: { value: '3.3' } });
+      await answer(3.2001);
+
+      expect(rateField().value).toBe('3.3');
+      fireEvent.click(confirmButton());
+      expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: 3.3, rateConfirmed: true }));
+    });
+
+    it('does not show a rate as accepted that the user never accepted', async () => {
+      const { lookup, answer } = pendingLookup();
+      const { onConfirm } = renderReview(draft(), lookup);
+
+      fireEvent.change(screen.getByLabelText(t.transactionDate), { target: { value: '2026-03-15' } });
+      fireEvent.click(acceptButton());
+      await answer(3.2001);
+
+      expect(rateField().value).toBe('3.2001');
+      expect(screen.getByRole('button', { name: t.acceptRate })).toBeEnabled();
+      expect(confirmButton()).toBeDisabled();
+      fireEvent.click(confirmButton());
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
   });
 
   it('empties the field when the new date has no rate', async () => {

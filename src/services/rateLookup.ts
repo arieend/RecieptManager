@@ -1,4 +1,5 @@
 import type { Session } from '../types';
+import { isUsableRate } from '../utils/money';
 
 /** A currency that has a rate to ILS to look up. ILS itself is never looked up. */
 export type ForeignCurrency = Exclude<Session['currency'], 'ILS'>;
@@ -31,7 +32,7 @@ export const createFrankfurterRateLookup =
       if (!response.ok) return null;
       const body = await response.json();
       const rate = Number(body?.rates?.ILS);
-      return Number.isFinite(rate) && rate > 0 ? rate : null;
+      return isUsableRate(rate) ? rate : null;
     } catch {
       return null;
     }
@@ -42,7 +43,7 @@ export const createFrankfurterRateLookup =
  * Unconfirmed (null when the lookup fails); ILS gets rate 1, confirmed.
  */
 export const withCurrency = async (
-  session: Session,
+  session: Omit<Session, 'currency' | 'exchangeRate' | 'rateConfirmed'>,
   currency: Session['currency'],
   lookup: RateLookup,
 ): Promise<Session> => {

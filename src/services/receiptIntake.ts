@@ -1,6 +1,6 @@
 import { Person, ReceiptItem, Session } from '../types';
 import { mimeTypeOf } from '../utils/imageUtils';
-import { RateLookup, rateDateOf } from './rateLookup';
+import { RateLookup, withCurrency } from './rateLookup';
 
 export const HOUSEHOLD_PERSON: Person = {
   id: 'person-family',
@@ -102,18 +102,6 @@ const toItems = (rawItems: unknown): ReceiptItem[] =>
   }));
 
 export const createReceiptIntake = ({ parser, prepare, rateLookup, now, newId }: ReceiptIntakeDeps) => {
-  /** ILS needs no rate. USD and EUR get the published rate, or null, as an Unconfirmed rate. */
-  const rateFor = async (currency: Session['currency'], createdAt: string) => {
-    if (currency === 'ILS') return { exchangeRate: 1, rateConfirmed: true };
-    let exchangeRate: number | null;
-    try {
-      exchangeRate = await rateLookup(currency, rateDateOf(createdAt));
-    } catch {
-      exchangeRate = null;
-    }
-    return { exchangeRate, rateConfirmed: false };
-  };
-
   const prepareOrFail = async (input: File | string) => {
     try {
       return await prepare(input);
@@ -142,9 +130,9 @@ export const createReceiptIntake = ({ parser, prepare, rateLookup, now, newId }:
       const raw = await parseOrFail(dataUrl);
       const storeName = toText(raw.store_or_brand_name);
       const createdAt = (parseReceiptDate(raw.transaction_datetime) ?? new Date(now())).toISOString();
-      const currency = toCurrency(raw.currency);
 
-      return {
+      // ILS needs no rate. USD and EUR get the published rate, or null, as an Unconfirmed rate.
+      const draft = {
         id: newId(),
         userId,
         storeName: storeName ?? 'unknown',
@@ -155,10 +143,9 @@ export const createReceiptIntake = ({ parser, prepare, rateLookup, now, newId }:
         tax: toNumber(raw.tax, 0),
         tip: toNumber(raw.tip, 0),
         total: toNumber(raw.price, 0),
-        currency,
-        ...(await rateFor(currency, createdAt)),
         imageUrl: dataUrl,
       };
+      return withCurrency(draft, toCurrency(raw.currency), rateLookup);
     },
   };
 };

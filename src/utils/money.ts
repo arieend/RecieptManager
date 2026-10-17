@@ -16,6 +16,10 @@ const FIXED_RATES: Record<Currency, number> = { ILS: 1, USD: 3.7, EUR: 4.0 };
 
 const isCurrency = (value: unknown): value is Currency => typeof value === 'string' && value in FIXED_RATES;
 
+/** Whether a value is a usable rate to ILS: a positive, finite number. */
+export const isUsableRate = (rate: unknown): rate is number =>
+  typeof rate === 'number' && Number.isFinite(rate) && rate > 0;
+
 /**
  * The Session's rate to ILS. A USD or EUR Session without a usable rate gets the Fallback rate.
  * For an old Session (no `rateConfirmed`), a missing, 0 or exactly-1 rate counts as no rate;
@@ -27,7 +31,7 @@ export const rateToIls = (session: RatedSession): number => {
 
   const rate = Number(session.exchangeRate);
   const isOld = session.rateConfirmed === undefined;
-  const usable = rate > 0 && (!isOld || rate !== 1);
+  const usable = isUsableRate(rate) && (!isOld || rate !== 1);
   return usable ? rate : FIXED_RATES[currency];
 };
 

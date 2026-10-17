@@ -4,16 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionView } from './SessionView';
 import { translations } from '../translations';
 import * as geminiService from '../services/geminiService';
-import type { RateLookup } from '../services/rateLookup';
-
-const fakeRateLookup = (rates: Record<string, number | null> = { USD: 3.1268, EUR: 3.62 }) => {
-  const calls: [string, string][] = [];
-  const lookup: RateLookup = async (currency, date) => {
-    calls.push([currency, date]);
-    return rates[currency] ?? null;
-  };
-  return { lookup, calls };
-};
+import { fakeRateLookup } from '../services/__fakes__/fakeRateLookup';
 
 // Mock motion to avoid animation issues
 vi.mock('motion/react', () => {
@@ -200,6 +191,19 @@ describe('SessionView', () => {
       expect(mockProps.setSession).toHaveBeenLastCalledWith(
         expect.objectContaining({ exchangeRate: 3.1268, rateConfirmed: true }),
       );
+    });
+
+    it('never offers the Fallback rate to accept when there is no looked-up rate', () => {
+      render(<SessionView {...mockProps} session={{ ...unconfirmed, exchangeRate: null }} />);
+      const rateInput = screen.getByRole('spinbutton') as HTMLInputElement;
+      expect(rateInput.value).toBe('');
+      expect(screen.queryByDisplayValue('3.7')).not.toBeInTheDocument();
+      const accept = screen.queryByRole('button', { name: translations.en.acceptRate });
+      if (accept) {
+        expect(accept).toBeDisabled();
+        fireEvent.click(accept);
+      }
+      expect(mockProps.setSession).not.toHaveBeenCalled();
     });
 
     it('confirms the rate the user types', () => {

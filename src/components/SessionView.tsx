@@ -15,7 +15,7 @@ import { RateLookup, withCurrency } from '../services/rateLookup';
 import { SummaryCard } from './SummaryCard';
 import { ItemCard } from './ItemCard';
 import { calculateTotals } from '../utils/calculations';
-import { isRateUnconfirmed, rateToIls } from '../utils/money';
+import { isRateUnconfirmed, isUsableRate, rateToIls } from '../utils/money';
 
 interface SessionViewProps {
   session: Session;
@@ -49,6 +49,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
   const totals = useMemo(() => calculateTotals(session), [session]);
   const rateUnconfirmed = isRateUnconfirmed(session);
+  // No looked-up rate: the field stays empty and Accept is off, so the Fallback rate is never confirmed (ADR-0002).
+  const rateUnknown = rateUnconfirmed && !isUsableRate(session.exchangeRate);
 
   const addItem = () => {
     setPromptModal({
@@ -169,7 +171,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
   // A rate the user gives is theirs: it confirms the Session's rate (GLOSSARY.md, Unconfirmed rate).
   const updateExchangeRate = (rate: number) => {
-    if (!(rate > 0)) return;
+    if (!isUsableRate(rate)) return;
     setSession({ ...session, exchangeRate: rate, rateConfirmed: true });
   };
 
@@ -284,7 +286,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                 <input 
                   type="number"
                   step="0.01"
-                  value={rateToIls(session)}
+                  value={rateUnknown ? '' : rateToIls(session)}
                   onChange={(e) => updateExchangeRate(parseFloat(e.target.value))}
                   className="w-20 px-2 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500"
                 />
@@ -299,7 +301,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   </span>
                   <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{translations[language].ilsEstimated}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => updateExchangeRate(rateToIls(session))}>
+                <Button variant="outline" size="sm" disabled={rateUnknown} onClick={() => updateExchangeRate(rateToIls(session))}>
                   {translations[language].acceptRate}
                 </Button>
               </div>
