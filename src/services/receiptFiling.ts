@@ -34,7 +34,7 @@ const classifySyncFailure = (error: unknown): SyncFailureKind => {
   return 'sync-failed';
 };
 
-/** Missing links are saved as "" rather than undefined, which the Firestore adapter strips, so a merge write clears stale ones. */
+/** Missing image and links are saved as "", the shape stored Sessions have always had. */
 const withLinks = (session: Session, result: SyncResult = {}): Session => ({
   ...session,
   imageUrl: session.imageUrl || '',

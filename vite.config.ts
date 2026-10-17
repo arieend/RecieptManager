@@ -59,6 +59,8 @@ export default defineConfig(({mode}) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      // Each test sets its own mock behaviour; none leaks from an earlier test.
+      mockReset: true,
       coverage: {
         provider: 'v8',
         // TESTING.md: services and utility helpers carry the coverage bar.

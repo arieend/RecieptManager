@@ -18,6 +18,7 @@ const failIfAsked = () => {
 };
 
 vi.mock('firebase/firestore', () => ({
+  deleteField: () => 'DELETE_FIELD',
   collection: (_db: unknown, name: string) => name,
   doc: (_db: unknown, name: string, id: string) => `${name}/${id}`,
   where: (...args: unknown[]) => ['where', ...args],
@@ -96,8 +97,8 @@ beforeEach(() => {
 describe('Firestore Session adapter', () => {
   const adapter = createFirestoreSessionAdapter();
 
-  it('merges the Session into the document named by its ID, without the ID or undefined fields', async () => {
-    await adapter.put(session({ englishStoreName: undefined }));
+  it('merges the Session into the document named by its ID, without the ID', async () => {
+    await adapter.put(session());
 
     expect(firestore.writes).toEqual([{
       path: 'sessions/draft-1',
@@ -115,6 +116,18 @@ describe('Firestore Session adapter', () => {
       },
       options: { merge: true },
     }]);
+  });
+
+  it('deletes a field the Session sets to undefined, so the merge write clears a stored value', async () => {
+    await adapter.put(session({ driveLink: undefined, spreadsheetLink: undefined }));
+
+    expect(firestore.writes[0].data).toMatchObject({ driveLink: 'DELETE_FIELD', spreadsheetLink: 'DELETE_FIELD' });
+  });
+
+  it('drops undefined fields inside arrays, which Firestore replaces whole', async () => {
+    await adapter.put(session());
+
+    expect((firestore.writes[0].data as Session).items[0]).not.toHaveProperty('category');
   });
 
   it('deletes the document named by the ID', async () => {

@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, deleteField, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db, describeFirestoreError, OperationType } from '../firebase';
 import { Session } from '../types';
 import { SessionAdapter, SessionStoreError } from './sessionStore';
@@ -6,8 +6,14 @@ import { SessionAdapter, SessionStoreError } from './sessionStore';
 const SESSIONS = 'sessions';
 const MAX_BATCH_WRITES = 500;
 
-/** Firestore rejects `undefined` fields, and the document carries its ID outside the data. */
-const toDocument = ({ id: _id, ...data }: Session) => JSON.parse(JSON.stringify(data));
+/**
+ * The document carries its ID outside the data. Firestore rejects `undefined`: a top-level field set to
+ * `undefined` is deleted, so the merge write clears a stored value; inside arrays, which Firestore
+ * replaces whole, it is dropped.
+ */
+const toDocument = ({ id: _id, ...data }: Session) =>
+  Object.fromEntries(Object.entries(data).map(([key, value]) =>
+    [key, value === undefined ? deleteField() : JSON.parse(JSON.stringify(value))]));
 
 const isQuotaExceeded = (error: unknown) =>
   error instanceof Error && error.message.includes('Quota limit exceeded');
