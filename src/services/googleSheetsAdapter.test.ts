@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createGoogleSheetsAdapter } from './googleSheetsAdapter';
+import { GoogleApiError } from './googleApiError';
 
 const ok = (body: unknown) => ({ ok: true, status: 200, json: () => Promise.resolve(body) });
 const failing = (status: number, message?: string) => ({
@@ -44,8 +45,9 @@ describe('Google Sheets adapter', () => {
   it('fails a create with the API message and status', async () => {
     fetchMock.mockResolvedValueOnce(failing(429, 'Quota exceeded'));
 
-    await expect(adapter.create('Receipts', { title: 'Purchases', headers: [], locale: 'iw_IL' }))
-      .rejects.toMatchObject({ message: 'Quota exceeded', status: 429 });
+    const failure = adapter.create('Receipts', { title: 'Purchases', headers: [], locale: 'iw_IL' });
+    await expect(failure).rejects.toBeInstanceOf(GoogleApiError);
+    await expect(failure).rejects.toMatchObject({ message: 'Quota exceeded', status: 429 });
   });
 
   it('describes the locale and tabs', async () => {
@@ -116,7 +118,9 @@ describe('Google Sheets adapter', () => {
   it('fails an append with its status, so an expired token is recognisable', async () => {
     fetchMock.mockResolvedValueOnce(failing(401, 'Request had invalid authentication credentials.'));
 
-    await expect(adapter.append('sheet-1', 'Purchases', [])).rejects.toMatchObject({ status: 401 });
+    const failure = adapter.append('sheet-1', 'Purchases', []);
+    await expect(failure).rejects.toBeInstanceOf(GoogleApiError);
+    await expect(failure).rejects.toMatchObject({ status: 401 });
   });
 
   it('date-formats the given rows, converting to the API row indexes', async () => {

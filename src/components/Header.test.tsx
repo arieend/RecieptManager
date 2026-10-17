@@ -14,7 +14,7 @@ describe('Header', () => {
     translations: translations,
     spreadsheetId: 'test-id',
     spreadsheetName: 'Receipts Database',
-    driveToken: 'test-token',
+    isDriveConnected: true,
     onReconnectDrive: vi.fn(),
     onCreateSpreadsheet: vi.fn(),
     isCreatingSpreadsheet: false,

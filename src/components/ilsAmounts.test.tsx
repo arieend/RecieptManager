@@ -34,7 +34,7 @@ describe('ILS amount of a USD Session with a stored rate of 1', () => {
         onScan={vi.fn()} onUpload={vi.fn()} onUploadFolder={vi.fn()} onHistoryClick={vi.fn()}
         onSessionClick={vi.fn()} onSettingsClick={vi.fn()} onMonthlySummaryClick={vi.fn()}
         translations={translations} language="en" currencySymbol="₪"
-        driveToken="token" onReconnectDrive={vi.fn()} settings={settings}
+        isDriveConnected onReconnectDrive={vi.fn()} settings={settings}
       />
     );
     expect(screen.getByText(/₪370\.00 total spending/i)).toBeInTheDocument();

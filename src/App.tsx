@@ -22,6 +22,9 @@ import { syncToCloud } from './services/syncService';
 import { createPurchasesSheet } from './services/purchasesSheet';
 import { createGoogleSheetsAdapter } from './services/googleSheetsAdapter';
 import { createReceiptFiling, SyncFailureKind, withSavedLinks } from './services/receiptFiling';
+import { createGoogleAccess } from './services/googleAccess';
+import { GoogleApiError } from './services/googleApiError';
+import { useGoogleAccess } from './hooks/useGoogleAccess';
 import { 
   getSettings, saveSettings, StorageSettings,
   getCurrencySymbol
@@ -57,6 +60,8 @@ const sessionStore = createSessionStore({
 
 const receiptFiling = createReceiptFiling({ sync: syncToCloud, store: sessionStore });
 
+const googleAccess = createGoogleAccess({ storage: localStorage, now: Date.now });
+
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -75,23 +80,8 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [processingQueue, setProcessingQueue] = useState<File[]>([]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
-  const [driveToken, setDriveToken] = useState<string | null>(() => {
-    const token = localStorage.getItem('drive_token');
-    const timestamp = localStorage.getItem('drive_token_timestamp');
-    if (token && timestamp) {
-      const now = Date.now();
-      const tokenTime = parseInt(timestamp, 10);
-      // Google tokens expire in 1 hour (3600 seconds). 
-      // We consider it expired after 55 minutes to be safe.
-      if (now - tokenTime > 55 * 60 * 1000) {
-        localStorage.removeItem('drive_token');
-        localStorage.removeItem('drive_token_timestamp');
-        return null;
-      }
-      return token;
-    }
-    return null;
-  });
+  const google = useGoogleAccess(googleAccess);
+  const driveToken = google.token;
   const [settings, setSettings] = useState<StorageSettings>(getSettings());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -179,9 +169,7 @@ export default function App() {
       const credential = GoogleAuthProvider.credentialFromResult(result);
       const token = credential?.accessToken;
       if (token) {
-        setDriveToken(token);
-        localStorage.setItem('drive_token', token);
-        localStorage.setItem('drive_token_timestamp', Date.now().toString());
+        google.store(token);
       } else {
         console.warn("No access token returned from Google login.");
       }
@@ -195,9 +183,7 @@ export default function App() {
 
   const handleLogout = () => {
     signOut(auth);
-    setDriveToken(null);
-    localStorage.removeItem('drive_token');
-    localStorage.removeItem('drive_token_timestamp');
+    google.clear();
     setView('main');
   };
 
@@ -305,7 +291,11 @@ export default function App() {
       saveSettings(newSettings);
     } catch (error) {
       console.error("Error connecting spreadsheet:", error);
-      setShowToast(language === 'he' ? 'שגיאה בחיבור הגיליון.' : 'Failed to connect spreadsheet.');
+      if (error instanceof GoogleApiError && error.status === 401) {
+        void showGoogleSessionExpired();
+      } else {
+        setShowToast(language === 'he' ? 'שגיאה בחיבור הגיליון.' : 'Failed to connect spreadsheet.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -378,12 +368,14 @@ export default function App() {
     setTimeout(() => { setShowToast(null); resolve(); }, ms);
   });
 
+  /** Google rejected the access token: drop it and ask the user to sign in again. */
+  const showGoogleSessionExpired = () => {
+    google.invalidate();
+    return flashToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.', 5000);
+  };
+
   const showSyncFailure = (kind: SyncFailureKind) => {
-    if (kind === 'drive-auth-expired') {
-      setDriveToken(null);
-      localStorage.removeItem('drive_token');
-      return flashToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.', 5000);
-    }
+    if (kind === 'drive-auth-expired') return showGoogleSessionExpired();
     if (kind === 'sheets-disabled') return flashToast(t.sheetsApiDisabled, 5000);
     return flashToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud', 5000);
   };
@@ -593,7 +585,7 @@ export default function App() {
           translations={translations}
           spreadsheetId={settings.spreadsheetId}
           spreadsheetName={settings.spreadsheetName}
-          driveToken={driveToken}
+          isDriveConnected={!!driveToken}
           onReconnectDrive={handleLogin}
           onCreateSpreadsheet={handleConnectSpreadsheet}
           isCreatingSpreadsheet={isSaving}
@@ -655,7 +647,7 @@ export default function App() {
                 translations={translations}
                 language={language}
                 currencySymbol={currencySymbol}
-                driveToken={driveToken}
+                isDriveConnected={!!driveToken}
                 onReconnectDrive={handleLogin}
                 settings={settings}
               />
@@ -742,7 +734,7 @@ export default function App() {
                 onBack={() => setView('main')}
                 onLogout={handleLogout}
                 onReconnectDrive={handleLogin}
-                driveToken={driveToken}
+                isDriveConnected={!!driveToken}
                 translations={translations}
                 language={language}
                 deferredPrompt={deferredPrompt}

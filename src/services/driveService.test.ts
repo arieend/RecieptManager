@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getOrCreateFolder, getOrCreateFolderPath, uploadFileToDrive, findSpreadsheetByName, DRIVE_API_URL } from './driveService';
+import { GoogleApiError } from './googleApiError';
 
 describe('driveService', () => {
   const mockToken = 'mock-token';
@@ -24,7 +25,29 @@ describe('driveService', () => {
   it('findSpreadsheetByName fails with the status instead of reporting no match', async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({ error: { message: 'Backend Error' } }) });
 
-    await expect(findSpreadsheetByName(mockToken, 'Receipts')).rejects.toMatchObject({ message: 'Backend Error', status: 503 });
+    const failure = findSpreadsheetByName(mockToken, 'Receipts');
+    await expect(failure).rejects.toBeInstanceOf(GoogleApiError);
+    await expect(failure).rejects.toMatchObject({ message: 'Backend Error', status: 503 });
+  });
+
+  const unauthorized = { ok: false, status: 401, json: () => Promise.resolve({ error: { message: 'Invalid Credentials' } }) };
+
+  it('getOrCreateFolder fails a create with a GoogleApiError carrying the status', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ files: [] }) })
+      .mockResolvedValueOnce(unauthorized);
+
+    const failure = getOrCreateFolder(mockToken, 'Receipts');
+    await expect(failure).rejects.toBeInstanceOf(GoogleApiError);
+    await expect(failure).rejects.toMatchObject({ message: 'Invalid Credentials', status: 401 });
+  });
+
+  it('uploadFileToDrive fails with a GoogleApiError carrying the status', async () => {
+    fetchMock.mockResolvedValueOnce(unauthorized);
+
+    const failure = uploadFileToDrive(mockToken, 'folder-1', 'receipt.jpg', 'data:image/jpeg;base64,AAAA', 'image/jpeg');
+    await expect(failure).rejects.toBeInstanceOf(GoogleApiError);
+    await expect(failure).rejects.toMatchObject({ message: 'Invalid Credentials', status: 401 });
   });
 
   it('getOrCreateFolder returns existing folder ID', async () => {

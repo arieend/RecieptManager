@@ -1,8 +1,9 @@
 import type { ReactNode, Ref } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import App from './App';
 import { syncToCloud } from './services/syncService';
+import { GoogleApiError } from './services/googleApiError';
 import { signInWithDrive, uploadReceipt, confirmReview } from './test/appFlow';
 
 // Mock Firebase
@@ -202,4 +203,38 @@ describe('Saving a receipt', () => {
     const sheetWrites = vi.mocked(syncToCloud).mock.calls.filter(([, settings]) => settings.syncToSheets);
     expect(sheetWrites).toHaveLength(1);
   }, 15000);
+});
+
+describe('An expired Google access token', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const sessionExpired = 'Google Drive session expired. Please reconnect.';
+  const googleAccessKeys = () => [localStorage.getItem('drive_token'), localStorage.getItem('drive_token_timestamp')];
+
+  it('is cleared from storage when Google rejects it during Receipt filing', async () => {
+    signInWithDrive();
+    vi.mocked(syncToCloud).mockRejectedValueOnce(new GoogleApiError('Invalid Credentials', 401));
+    render(<App />);
+    uploadReceipt();
+
+    await confirmReview();
+
+    expect(await screen.findByText(sessionExpired)).toBeInTheDocument();
+    expect(googleAccessKeys()).toEqual([null, null]);
+    expect(screen.getByTitle('Connect Google Drive')).toBeInTheDocument();
+  }, 15000);
+
+  it('is cleared from storage when Google rejects it while connecting a spreadsheet', async () => {
+    signInWithDrive();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'Invalid Credentials' } }) })));
+    render(<App />);
+
+    fireEvent.click(screen.getByTitle('Connect Google Sheets'));
+
+    expect(await screen.findByText(sessionExpired)).toBeInTheDocument();
+    expect(googleAccessKeys()).toEqual([null, null]);
+    expect(screen.getByTitle('Connect Google Drive')).toBeInTheDocument();
+  });
 });

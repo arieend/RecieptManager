@@ -4,6 +4,7 @@ import { StorageSettings } from './configService';
 import { createSessionStore, createInMemorySessionAdapter } from './sessionStore';
 import { SyncResult, SheetsSyncError } from './syncService';
 import { createReceiptFiling, ReceiptSync, withSavedLinks } from './receiptFiling';
+import { GoogleApiError } from './googleApiError';
 
 const session = (overrides: Partial<Session> = {}): Session => ({
   id: 'draft-1',
@@ -284,12 +285,11 @@ describe('Receipt filing', () => {
       .rejects.toMatchObject({ name: 'SessionStoreError', kind: 'write-failed' });
   });
 
-  const withStatus = (message: string, status: number) => Object.assign(new Error(message), { status });
-
   it.each([
-    ['a 401 from Drive', 'drive-auth-expired', withStatus('Unauthorized', 401)],
-    ['an invalid_grant error', 'drive-auth-expired', new Error('invalid_grant')],
-    ['a message mentioning 401', 'drive-auth-expired', new Error('Request failed with status 401')],
+    ['a 401 from Drive', 'drive-auth-expired', new GoogleApiError('Invalid Credentials', 401)],
+    ['a 401 from Sheets', 'drive-auth-expired', new SheetsSyncError({}, new GoogleApiError('Request had invalid authentication credentials.', 401))],
+    ['an invalid_grant message without a 401 status', 'sync-failed', new GoogleApiError('invalid_grant', 400)],
+    ['a message mentioning 401 without a 401 status', 'sync-failed', new Error('Request failed with status 401')],
     ['Sheets API not enabled', 'sheets-disabled', new Error('Google Sheets API has not been used; enable sheets.googleapis.com')],
     ['Sheets API disabled', 'sheets-disabled', new Error('Sheets API is disabled for this project')],
     ['anything else', 'sync-failed', new Error('Network request failed')],

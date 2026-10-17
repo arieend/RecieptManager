@@ -1,4 +1,5 @@
 import { findSpreadsheetByName } from './driveService';
+import { GoogleApiError } from './googleApiError';
 import type { SheetCell, SpreadsheetAdapter } from './purchasesSheet';
 
 const SHEETS_API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -30,7 +31,7 @@ const a1 = (tabTitle: string, cells: string) => `'${tabTitle.replace(/'/g, "''")
 /** Fails with the API's message and the HTTP status, so 401s can be told apart. */
 const failed = async (response: Response, fallback: string) => {
   const body = await response.json().catch(() => ({}));
-  return Object.assign(new Error(body.error?.message || fallback), { status: response.status });
+  return new GoogleApiError(body.error?.message || fallback, response.status);
 };
 
 /** The rows an append wrote, from an updated range like `'Purchases'!A10:J12`. */
