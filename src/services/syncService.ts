@@ -13,6 +13,14 @@ export interface SyncResult {
   itemSheetsLinks?: Record<string, string>;
 }
 
+/** Sheets failed after any Drive upload finished; `synced` holds what did finish so it isn't lost. */
+export class SheetsSyncError extends Error {
+  name = 'SheetsSyncError';
+  constructor(readonly synced: SyncResult, readonly cause: unknown) {
+    super(String((cause as any)?.message ?? cause));
+  }
+}
+
 export const syncToCloud = async (
   session: Session,
   settings: StorageSettings,
@@ -140,7 +148,7 @@ export const syncToCloud = async (
       }
     } catch (error) {
       console.error("Sheets sync error:", error);
-      throw error;
+      throw new SheetsSyncError(result, error);
     }
   }
 
