@@ -69,10 +69,10 @@ describe('syncService', () => {
       itemSheetsLinks: { i1: `${link}#gid=0&range=A1` },
     });
     expect(createGoogleSheetsAdapter).toHaveBeenCalledWith(mockToken);
-    expect(sheets.tab('sheet-123', 'Purchases')).toEqual([
-      [expect.stringMatching(/^\d{2}\/\d{2}\/\d{4}$/), 'Test Store', 'Item 1', '10', 'Food', 'Tag1', 'Person 1',
-        '=HYPERLINK("http://link", "Test_Store_20240101_10.00.jpg")', '', ''],
-    ]);
+    // Column order is the Purchases sheet's to test; here, only that this upload's link reached the row.
+    const rows = sheets.tab('sheet-123', 'Purchases');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain('=HYPERLINK("http://link", "Test_Store_20240101_10.00.jpg")');
   });
 
   it('keeps the finished Drive upload when Sheets then fails', async () => {

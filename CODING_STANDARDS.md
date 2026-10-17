@@ -20,3 +20,11 @@ A test names a rule. Break that rule in the code under test, and the test must g
 The common shape: a fake that never produces the value the assertion is about. The test then passes for the fake's sake, not the code's. The fix is to make the fake produce the value, so the assertion has something to reject.
 
 _Why:_ a "reports no spreadsheet ID" test for Receipt filing passed because its fake sync never returned a spreadsheet ID at all; the code could have leaked one and the test would have stayed green.
+
+## Tests read a structure through its definition
+
+When code under test produces a structure whose shape another module defines (sheet columns, a row, a stored document), the test reads the result through that definition: by header or by key, not by position. A positional list in a test is a second copy of the definition, and it agrees with the code even when both are wrong.
+
+Look for `toEqual([...])` or `arrayContaining([...])` over a row or tuple whose order is defined somewhere else, and ask whether the assertion would notice a value landing under the wrong name.
+
+_Why:_ the Sheets row test checked `'Tag1', 'Person 1'` by position, so person names written under the "Labels" header passed until an architecture review read the header list next to the row.
