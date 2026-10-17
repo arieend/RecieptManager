@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rateToIls, itemAmount, sessionTotal, subtotal, toDisplay, toIls } from './money';
+import { rateToIls, isRateUnconfirmed, itemAmount, sessionTotal, subtotal, toDisplay, toIls } from './money';
 import { ReceiptItem, Session } from '../types';
 
 const item = (overrides: Partial<ReceiptItem> = {}): ReceiptItem => ({
@@ -40,6 +40,38 @@ describe('rateToIls', () => {
   it('treats a missing or unknown currency as ILS', () => {
     expect(rateToIls({ currency: undefined as unknown as Session['currency'], exchangeRate: 3 })).toBe(1);
     expect(rateToIls({ currency: 'GBP' as Session['currency'], exchangeRate: 5 })).toBe(1);
+  });
+});
+
+describe('rateToIls for Sessions with rateConfirmed', () => {
+  it.each([true, false])('uses its own positive rate, exactly 1 included (rateConfirmed: %s)', (rateConfirmed) => {
+    expect(rateToIls({ currency: 'USD', exchangeRate: 3.1268, rateConfirmed })).toBe(3.1268);
+    expect(rateToIls({ currency: 'USD', exchangeRate: 1, rateConfirmed })).toBe(1);
+    expect(rateToIls({ currency: 'EUR', exchangeRate: 1, rateConfirmed })).toBe(1);
+  });
+
+  it.each([null, 0, -2, NaN])('falls back to the fixed rate when the rate is %s', (exchangeRate) => {
+    expect(rateToIls({ currency: 'USD', exchangeRate, rateConfirmed: false })).toBe(3.7);
+    expect(rateToIls({ currency: 'EUR', exchangeRate, rateConfirmed: true })).toBe(4.0);
+  });
+
+  it('is 1 for ILS', () => {
+    expect(rateToIls({ currency: 'ILS', exchangeRate: null, rateConfirmed: false })).toBe(1);
+  });
+});
+
+describe('isRateUnconfirmed', () => {
+  it('is false for an old Session, which counts as confirmed', () => {
+    expect(isRateUnconfirmed({ currency: 'USD', exchangeRate: 1 })).toBe(false);
+  });
+
+  it('is false for a confirmed Session', () => {
+    expect(isRateUnconfirmed({ currency: 'USD', exchangeRate: 3.6, rateConfirmed: true })).toBe(false);
+  });
+
+  it('is true for an unconfirmed Session, with or without a rate', () => {
+    expect(isRateUnconfirmed({ currency: 'USD', exchangeRate: 3.6, rateConfirmed: false })).toBe(true);
+    expect(isRateUnconfirmed({ currency: 'EUR', exchangeRate: null, rateConfirmed: false })).toBe(true);
   });
 });
 

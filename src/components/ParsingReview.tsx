@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { RefreshCw, Edit3, Check, Calendar, Store, Tag, AlertCircle, X } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { RefreshCw, Edit3, Check, Calendar, Store, Tag, AlertCircle, X, ArrowRightLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Session } from '../types';
 import { Language, Translations } from '../translations';
 import { Button, Input } from './ui/Base';
 import { getCurrencySymbol } from '../services/configService';
+import { RateLookup, rateDateOf } from '../services/rateLookup';
+import { isUsableRate } from '../utils/money';
 
 interface ParsingReviewProps {
   session: Session;
+  /** Looks the rate up again when the receipt date changes. */
+  rateLookup: RateLookup;
   onRescan: () => void;
   onConfirm: (session: Session) => void;
   onCancel: () => void;
@@ -17,10 +21,57 @@ interface ParsingReviewProps {
 }
 
 export const ParsingReview: React.FC<ParsingReviewProps> = ({
-  session, onRescan, onConfirm, onCancel, language, translations, currencySymbol
+  session, rateLookup, onRescan, onConfirm, onCancel, language, translations, currencySymbol
 }) => {
   const [editedSession, setEditedSession] = useState<Session>(session);
   const t = translations[language];
+
+  // The rate field (USD/EUR only): the Rate lookup's suggestion, or empty when it is unknown.
+  const isForeign = session.currency !== 'ILS';
+  const suggested: number | null = session.exchangeRate;
+  const [rateText, setRateText] = useState(suggested === null ? '' : String(suggested));
+  const [rateAccepted, setRateAccepted] = useState(false);
+  // True while the lookup for a new date is out: the rate is unconfirmed and can't be accepted yet.
+  const [ratePending, setRatePending] = useState(false);
+  // Bumped by each date change, typed rate and accept, so a stale lookup can't overwrite any of them.
+  const rateEdit = useRef(0);
+
+  const enteredRate = Number(rateText);
+  const isRatePositive = isUsableRate(enteredRate);
+  const canConfirm = !isForeign || (rateAccepted && isRatePositive);
+
+  const handleRateChange = (text: string) => {
+    rateEdit.current += 1;
+    setRatePending(false);
+    setRateText(text);
+    // Entering a positive rate confirms it, the same as accepting the suggestion.
+    setRateAccepted(isUsableRate(Number(text)));
+  };
+
+  const handleAcceptRate = () => {
+    rateEdit.current += 1;
+    setRatePending(false);
+    setRateAccepted(true);
+  };
+
+  const lookUpRateFor = (createdAt: string) => {
+    if (session.currency === 'ILS') return;
+    const edit = ++rateEdit.current;
+    setRateAccepted(false);
+    setRatePending(true);
+    rateLookup(session.currency, rateDateOf(createdAt)).then((rate) => {
+      if (edit !== rateEdit.current) return;
+      setRatePending(false);
+      setRateText(rate === null ? '' : String(rate));
+    });
+  };
+
+  const confirmedSession = (): Session =>
+    isForeign ? { ...editedSession, exchangeRate: enteredRate, rateConfirmed: true } : editedSession;
+
+  const handleConfirm = () => {
+    if (canConfirm) onConfirm(confirmedSession());
+  };
 
   const handleDateChange = (dateStr: string) => {
     if (!dateStr) return;
@@ -28,7 +79,10 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
       const [year, month, day] = dateStr.split('-').map(Number);
       const d = new Date(editedSession.createdAt);
       d.setFullYear(year, month - 1, day);
-      setEditedSession({ ...editedSession, createdAt: d.toISOString() });
+      const createdAt = d.toISOString();
+      if (createdAt === editedSession.createdAt) return;
+      setEditedSession({ ...editedSession, createdAt });
+      lookUpRateFor(createdAt);
     } catch (e) {
       console.warn("Invalid date entered");
     }
@@ -106,11 +160,47 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
             </label>
             <Input 
               type="date"
+              aria-label={t.transactionDate}
               value={displayDate}
               onChange={(e) => handleDateChange(e.target.value)}
               className="font-bold h-12"
             />
           </div>
+
+          {/* Rate to ILS (USD/EUR only) */}
+          {isForeign && (
+            <div className="space-y-1">
+              <label htmlFor="review-rate" className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                <ArrowRightLeft size={12} />
+                {t.rateToIlsLabel}
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="review-rate"
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  value={rateText}
+                  placeholder={t.rateUnknown}
+                  onChange={(e) => handleRateChange(e.target.value)}
+                  className="font-bold h-12"
+                />
+                <Button
+                  variant={rateAccepted ? 'secondary' : 'primary'}
+                  onClick={handleAcceptRate}
+                  disabled={!isRatePositive || rateAccepted || ratePending}
+                  className="h-12 shrink-0"
+                  leftIcon={<Check size={16} />}
+                >
+                  {rateAccepted ? t.rateAccepted : t.acceptRate}
+                </Button>
+              </div>
+              {!isRatePositive && (
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">{t.rateUnknown}</p>
+              )}
+            </div>
+          )}
 
           {/* Total */}
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/10">
@@ -140,7 +230,8 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
         <Button 
           variant="primary" 
           size="lg" 
-          onClick={() => onConfirm(editedSession)}
+          onClick={handleConfirm}
+          disabled={!canConfirm}
           className="w-full h-16 rounded-[2rem] text-lg font-black"
           leftIcon={<Check size={24} />}
         >
@@ -149,7 +240,8 @@ export const ParsingReview: React.FC<ParsingReviewProps> = ({
         <Button 
           variant="outline" 
           size="lg" 
-          onClick={() => onConfirm(editedSession)}
+          onClick={handleConfirm}
+          disabled={!canConfirm}
           className="w-full h-16 rounded-[2rem] text-lg font-black border-2 border-slate-200 dark:border-slate-800"
           leftIcon={<Edit3 size={24} />}
         >

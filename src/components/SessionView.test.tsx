@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionView } from './SessionView';
 import { translations } from '../translations';
 import * as geminiService from '../services/geminiService';
+import { fakeRateLookup } from '../services/__fakes__/fakeRateLookup';
 
 // Mock motion to avoid animation issues
 vi.mock('motion/react', () => {
@@ -58,6 +59,7 @@ describe('SessionView', () => {
     translations: translations,
     language: 'en' as const,
     currencySymbol: '$',
+    rateLookup: fakeRateLookup().lookup,
     settings: {
       storagePath: 'Receipts',
       directories: { year: true, month: true, day: false },
@@ -136,6 +138,80 @@ describe('SessionView', () => {
     await waitFor(() => {
       expect(geminiService.categorizeItems).toHaveBeenCalled();
       expect(mockProps.setSession).toHaveBeenCalled();
+    });
+  });
+
+  describe('the rate to ILS', () => {
+    const unconfirmed = { ...mockSession, exchangeRate: 3.1268, rateConfirmed: false };
+
+    it('shows the badge and marks ILS amounts as estimated while the rate is unconfirmed', () => {
+      render(<SessionView {...mockProps} session={unconfirmed} />);
+      expect(screen.getByText(translations.en.waitingForRate)).toBeInTheDocument();
+      expect(screen.getByText(translations.en.ilsEstimated)).toBeInTheDocument();
+    });
+
+    it('shows neither once the rate is confirmed', () => {
+      render(<SessionView {...mockProps} session={{ ...unconfirmed, rateConfirmed: true }} />);
+      expect(screen.queryByText(translations.en.waitingForRate)).not.toBeInTheDocument();
+      expect(screen.queryByText(translations.en.ilsEstimated)).not.toBeInTheDocument();
+    });
+
+    it("looks up the new currency's rate for the receipt's date and leaves it unconfirmed", async () => {
+      const { lookup, calls } = fakeRateLookup();
+      const session = { ...mockSession, rateConfirmed: true, createdAt: new Date(2026, 2, 15, 10).toISOString() };
+      render(<SessionView {...mockProps} session={session} rateLookup={lookup} />);
+      fireEvent.click(screen.getByRole('button', { name: '€' }));
+      await waitFor(() => expect(mockProps.setSession).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'EUR', exchangeRate: 3.62, rateConfirmed: false }),
+      ));
+      expect(calls).toEqual([['EUR', '2026-03-15']]);
+    });
+
+    it('leaves the rate unknown when the lookup fails', async () => {
+      render(<SessionView {...mockProps} rateLookup={fakeRateLookup({}).lookup} />);
+      fireEvent.click(screen.getByRole('button', { name: '€' }));
+      await waitFor(() => expect(mockProps.setSession).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'EUR', exchangeRate: null, rateConfirmed: false }),
+      ));
+    });
+
+    it('sets rate 1, confirmed, for a change to ILS without a lookup', async () => {
+      const { lookup, calls } = fakeRateLookup();
+      render(<SessionView {...mockProps} session={unconfirmed} rateLookup={lookup} />);
+      fireEvent.click(screen.getByRole('button', { name: '₪' }));
+      await waitFor(() => expect(mockProps.setSession).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'ILS', exchangeRate: 1, rateConfirmed: true }),
+      ));
+      expect(calls).toEqual([]);
+    });
+
+    it('confirms the suggested rate in one tap', () => {
+      render(<SessionView {...mockProps} session={unconfirmed} />);
+      fireEvent.click(screen.getByRole('button', { name: translations.en.acceptRate }));
+      expect(mockProps.setSession).toHaveBeenLastCalledWith(
+        expect.objectContaining({ exchangeRate: 3.1268, rateConfirmed: true }),
+      );
+    });
+
+    it('never offers the Fallback rate to accept when there is no looked-up rate', () => {
+      render(<SessionView {...mockProps} session={{ ...unconfirmed, exchangeRate: null }} />);
+      const rateInput = screen.getByRole('spinbutton') as HTMLInputElement;
+      expect(rateInput.value).toBe('');
+      expect(screen.queryByDisplayValue('3.7')).not.toBeInTheDocument();
+      const accept = screen.queryByRole('button', { name: translations.en.acceptRate });
+      if (accept) {
+        expect(accept).toBeDisabled();
+        fireEvent.click(accept);
+      }
+      expect(mockProps.setSession).not.toHaveBeenCalled();
+    });
+
+    it('confirms the rate the user types', () => {
+      render(<SessionView {...mockProps} session={unconfirmed} />);
+      fireEvent.change(screen.getByDisplayValue('3.1268'), { target: { value: '3.2' } });
+      expect(mockProps.setSession).toHaveBeenLastCalledWith(
+        expect.objectContaining({ exchangeRate: 3.2, rateConfirmed: true }),
+      );
     });
   });
 

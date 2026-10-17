@@ -10,7 +10,7 @@
 
 **Household person**: the default Person (`person-family`, named `משפחה`) that every Draft Session starts with; all items are assigned to it initially.
 
-**Receipt intake**: the module that turns one input (an uploaded `File` or a camera data URL) into a Draft Session: image preparation, receipt parsing, date parsing, and mapping. One receipt per call; batching belongs to the caller. Fails with a typed kind (`unreadable-file`, `parse-failed`).
+**Receipt intake**: the module that turns one input (an uploaded `File` or a camera data URL) into a Draft Session: image preparation, receipt parsing, date parsing, mapping, and the Rate lookup for a USD or EUR receipt's date. One receipt per call; batching belongs to the caller. Fails with a typed kind (`unreadable-file`, `parse-failed`).
 
 **Receipt parser**: the seam inside Receipt intake that turns a prepared image into Gemini's raw receipt JSON. Adapters: Gemini (production), fixture responses (tests). Cleaning up the raw JSON is Receipt intake's job, not the parser's.
 
@@ -18,9 +18,9 @@
 
 **Money**: the module that owns every amount derived from a Session: its rate to ILS, each ReceiptItem's line amount, the Session total, and conversion to the display currency. It always returns a number: a Session's own rate when it has one (confirmed or not), otherwise the Fallback rate. A Session saved before rates were confirmed counts as confirmed, and if its rate is missing, 0 or exactly 1 it gets the Fallback rate, so its amounts still match the rows already in its Purchases sheet. _Avoid_: price (for a line amount), NIS total.
 
-**Unconfirmed rate**: a USD or EUR Session's rate to ILS that the user has not accepted yet, whether it is a suggestion from the Rate lookup or unknown. The user confirms it in ParsingReview, or by editing the rate in SessionView. ILS Sessions never have one. _Avoid_: estimated rate, guessed rate.
+**Unconfirmed rate**: a USD or EUR Session's rate to ILS that the user has not accepted yet, whether it is a suggestion from the Rate lookup or unknown. The user confirms it in ParsingReview, by accepting or editing the rate in SessionView, or by setting it by chat. ILS Sessions never have one. _Avoid_: estimated rate, guessed rate.
 
-**Rate lookup**: the published exchange rate to ILS for a receipt's date, from the European Central Bank's reference rates (through Frankfurter), on the last business day on or before that date. It is a suggestion; it does not confirm the rate. _Avoid_: current rate, live rate.
+**Rate lookup**: the module that gives the published exchange rate to ILS for a receipt's date, from the European Central Bank's reference rates, on the last business day on or before that date, or nothing when it can't be had. It never fails. Adapters: Frankfurter (production), a fake answering from a table (tests). It is a suggestion; it does not confirm the rate. _Avoid_: current rate, live rate.
 
 **Fallback rate**: the fixed rate to ILS (3.7 for USD, 4.0 for EUR). Used only for Sessions saved before rates were confirmed, for showing amounts while a rate is unknown, and for converting to the display currency. Never written to the Purchases sheet for a new Session.
 

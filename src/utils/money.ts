@@ -3,7 +3,7 @@ import { ReceiptItem, Session } from '../types';
 export type Currency = Session['currency'];
 
 /** The part of a Session its rate to ILS depends on. */
-export type RatedSession = Pick<Session, 'currency' | 'exchangeRate'>;
+export type RatedSession = Pick<Session, 'currency' | 'exchangeRate' | 'rateConfirmed'>;
 
 /** An amount in the Session's own currency and in ILS, unrounded. */
 export interface Amount {
@@ -16,14 +16,27 @@ const FIXED_RATES: Record<Currency, number> = { ILS: 1, USD: 3.7, EUR: 4.0 };
 
 const isCurrency = (value: unknown): value is Currency => typeof value === 'string' && value in FIXED_RATES;
 
-/** The Session's rate to ILS. A missing, 0 or exactly-1 rate on a USD or EUR Session counts as no rate. */
+/** Whether a value is a usable rate to ILS: a positive, finite number. */
+export const isUsableRate = (rate: unknown): rate is number =>
+  typeof rate === 'number' && Number.isFinite(rate) && rate > 0;
+
+/**
+ * The Session's rate to ILS. A USD or EUR Session without a usable rate gets the Fallback rate.
+ * For an old Session (no `rateConfirmed`), a missing, 0 or exactly-1 rate counts as no rate;
+ * for a newer one, any positive rate is used, exactly 1 included (ADR-0003).
+ */
 export const rateToIls = (session: RatedSession): number => {
   const currency = session.currency || 'ILS';
   if (!isCurrency(currency) || currency === 'ILS') return 1;
 
   const rate = Number(session.exchangeRate);
-  return rate > 0 && rate !== 1 ? rate : FIXED_RATES[currency];
+  const isOld = session.rateConfirmed === undefined;
+  const usable = isUsableRate(rate) && (!isOld || rate !== 1);
+  return usable ? rate : FIXED_RATES[currency];
 };
+
+/** Whether the Session holds an Unconfirmed rate. Old Sessions count as confirmed. */
+export const isRateUnconfirmed = (session: RatedSession): boolean => session.rateConfirmed === false;
 
 /** Converts an amount in the Session's own currency to ILS at its rate. */
 export const toIls = (amount: number, session: RatedSession): number => amount * rateToIls(session);

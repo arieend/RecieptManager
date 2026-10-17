@@ -29,7 +29,13 @@ export interface Session {
   tip: number;
   total: number;
   currency: 'ILS' | 'USD' | 'EUR';
-  exchangeRate: number; // Rate to convert to ILS (1 original unit = X ILS)
+  /** Rate to convert to ILS (1 original unit = X ILS); null when unknown. Read it through Money. */
+  exchangeRate: number | null;
+  /**
+   * Whether the user accepted the rate. Absent on Sessions saved before Unconfirmed rates
+   * existed, which count as confirmed (ADR-0003).
+   */
+  rateConfirmed?: boolean;
   imageUrl?: string;
   driveFileId?: string;
   driveLink?: string;

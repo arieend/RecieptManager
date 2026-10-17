@@ -68,6 +68,21 @@ describe('HistoryView', () => {
     // Actually, let's just find the button that has the trash icon.
   });
 
+  it('shows a waiting-for-rate badge on Sessions with an Unconfirmed rate and none on others', () => {
+    const history = [
+      { ...session('1', 100, [item('a')]), exchangeRate: 3.1268, rateConfirmed: false },
+      { ...session('2', 50, [item('a')]), exchangeRate: 3.1268, rateConfirmed: true },
+      session('3', 20, [item('a')]),
+      { ...session('4', 30, [item('a')]), exchangeRate: null, rateConfirmed: false },
+    ];
+    render(<HistoryView {...mockProps} history={history} />);
+
+    const badges = screen.getAllByText(translations.en.waitingForRate);
+    expect(badges).toHaveLength(2);
+    expect(screen.getByText('Store 1').closest('.group')).toContainElement(badges[0]);
+    expect(screen.getByText('Store 4').closest('.group')).toContainElement(badges[1]);
+  });
+
   it('shows empty state when history is empty', () => {
     render(<HistoryView {...mockProps} history={[]} />);
     expect(screen.getByText(translations.en.noHistory)).toBeInTheDocument();
