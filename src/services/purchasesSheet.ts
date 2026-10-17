@@ -1,5 +1,6 @@
 import { ReceiptItem, Session } from '../types';
 import { HOUSEHOLD_PERSON } from './receiptIntake';
+import { itemAmount, rateToIls } from '../utils/money';
 
 /** A cell as the Purchases sheet reads it back: its shown text and any number format. */
 export interface SheetCell {
@@ -166,6 +167,8 @@ const dateFormatIn = (rows: SheetCell[][], column: number, locale: string): Date
   return null;
 };
 
+const roundCents = (amount: number) => Math.round(amount * 100) / 100;
+
 type Row = { session: Session; item: ReceiptItem; target: Target; links: ReceiptLinks };
 
 /** Each column once: its header on a new sheet and its value in every appended row. */
@@ -173,7 +176,8 @@ const COLUMNS: { header: string; value: (row: Row) => unknown }[] = [
   { header: 'Date', value: ({ session, target }) => formatDate(new Date(session.createdAt), target.dateFormat.pattern) },
   { header: 'Store', value: ({ session }) => session.storeName },
   { header: 'Item Name', value: ({ item }) => item.name },
-  { header: 'Price (NIS)', value: ({ session, item }) => item.price * (session.exchangeRate || 1) },
+  // The Line amount. Sheets created before it keep their 'Price (NIS)' header (ADR-0001).
+  { header: 'Amount (NIS)', value: ({ session, item }) => roundCents(itemAmount(session, item).ils) },
   { header: 'Category', value: ({ item }) => item.category || '' },
   { header: 'AI Tags', value: ({ item }) => (item.labels || []).join(', ') },
   {
@@ -192,8 +196,11 @@ const COLUMNS: { header: string; value: (row: Row) => unknown }[] = [
       return driveLink ? `=HYPERLINK("${driveLink}", "${fileName}")` : '';
     },
   },
-  { header: 'Original Amount', value: ({ session, item }) => (session.currency !== 'ILS' ? `${item.price.toFixed(2)} ${session.currency}` : '') },
-  { header: 'Exchange Rate', value: ({ session }) => (session.currency !== 'ILS' ? session.exchangeRate || 1 : '') },
+  {
+    header: 'Original Amount',
+    value: ({ session, item }) => (session.currency !== 'ILS' ? `${itemAmount(session, item).original.toFixed(2)} ${session.currency}` : ''),
+  },
+  { header: 'Exchange Rate', value: ({ session }) => (session.currency !== 'ILS' ? rateToIls(session) : '') },
 ];
 
 /** Links from a Drive upload in this same sync, preferred over the ones the Session already has. */

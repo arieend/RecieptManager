@@ -1,4 +1,5 @@
 import { Session, ReceiptItem } from '../types';
+import { itemAmount, sessionTotal, toDisplay } from './money';
 
 export interface CategorySummaryItem {
   name: string;
@@ -89,39 +90,6 @@ export function getCategoryColor(categoryName: string, index = 0): string {
   return CATEGORY_PALETTE[(colorIndex + index) % CATEGORY_PALETTE.length];
 }
 
-export function convertAmount(
-  amount: number,
-  fromCurrency: 'ILS' | 'USD' | 'EUR' | string,
-  toCurrency: 'ILS' | 'USD' | 'EUR',
-  sessionExchangeRate?: number
-): number {
-  if (!amount || isNaN(amount)) return 0;
-  if (fromCurrency === toCurrency) return amount;
-
-  const rateToIls = sessionExchangeRate && sessionExchangeRate > 0 ? sessionExchangeRate : (fromCurrency === 'USD' ? 3.7 : fromCurrency === 'EUR' ? 4.0 : 1);
-
-  // Convert from origin currency to ILS first
-  let amountInIls = amount;
-  if (fromCurrency === 'USD') {
-    amountInIls = amount * rateToIls;
-  } else if (fromCurrency === 'EUR') {
-    amountInIls = amount * rateToIls;
-  }
-
-  // Convert from ILS to target currency
-  if (toCurrency === 'ILS') {
-    return amountInIls;
-  }
-  if (toCurrency === 'USD') {
-    return amountInIls / 3.7;
-  }
-  if (toCurrency === 'EUR') {
-    return amountInIls / 4.0;
-  }
-
-  return amountInIls;
-}
-
 export function parseSessionDate(dateVal: any): Date | null {
   if (!dateVal) return null;
   if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
@@ -206,13 +174,7 @@ export function getAvailableMonthsForYear(
     const mIndex = d.getMonth();
     if (mIndex >= 0 && mIndex < 12) {
       monthData[mIndex].receiptCount += 1;
-      const converted = convertAmount(
-        Number(session.total) || 0,
-        session.currency || 'ILS',
-        targetCurrency,
-        session.exchangeRate || 1
-      );
-      monthData[mIndex].totalAmount += converted;
+      monthData[mIndex].totalAmount += toDisplay(sessionTotal(session).ils, targetCurrency);
     }
   });
 
@@ -307,22 +269,15 @@ export function aggregateCategoryBreakdown(
 
   sessions.forEach(session => {
     const sessionCurrency = session.currency || 'ILS';
-    const rate = session.exchangeRate || 1;
-
-    // Calculate ratio of tax/tip to subtotal if present to distribute to items
-    const subtotal = session.items?.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0) || 0;
-    const sessionTotal = Number(session.total) || subtotal;
-    const taxTipRatio = subtotal > 0 ? sessionTotal / subtotal : 1;
 
     if (session.items && session.items.length > 0) {
       session.items.forEach(item => {
         const rawCategory = item.category?.trim() || 'Other';
         // Normalize common category names capitalization
         const categoryName = rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1);
-        const price = Number(item.price) || 0;
         const qty = Number(item.quantity) || 1;
-        const rawItemTotal = price * qty * taxTipRatio;
-        const converted = convertAmount(rawItemTotal, sessionCurrency, targetCurrency, rate);
+        const amount = itemAmount(session, item);
+        const converted = toDisplay(amount.ils, targetCurrency);
 
         totalSpent += converted;
         totalItems += qty;
@@ -346,7 +301,7 @@ export function aggregateCategoryBreakdown(
           englishStoreName: session.englishStoreName,
           date: session.createdAt,
           name: item.name || 'Unnamed item',
-          price: price * qty,
+          price: amount.original,
           convertedPrice: converted,
           quantity: qty,
           currency: sessionCurrency,
@@ -354,7 +309,8 @@ export function aggregateCategoryBreakdown(
       });
     } else {
       // If session has no individual items, categorize the session as a whole under 'General'
-      const converted = convertAmount(sessionTotal, sessionCurrency, targetCurrency, rate);
+      const total = sessionTotal(session);
+      const converted = toDisplay(total.ils, targetCurrency);
       totalSpent += converted;
       totalItems += 1;
 
@@ -378,7 +334,7 @@ export function aggregateCategoryBreakdown(
         englishStoreName: session.englishStoreName,
         date: session.createdAt,
         name: session.storeName || 'Receipt Total',
-        price: sessionTotal,
+        price: total.original,
         convertedPrice: converted,
         quantity: 1,
         currency: sessionCurrency,
@@ -509,25 +465,18 @@ export function generateMonthlyTrendSeries(
     const entry = dataByMonth.get(monthKey)!;
     entry.receiptCount += 1;
 
-    const sessionCurrency = session.currency || 'ILS';
-    const rate = session.exchangeRate || 1;
-    const subtotal = session.items?.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0) || 0;
-    const sessionTotal = Number(session.total) || subtotal;
-    const taxTipRatio = subtotal > 0 ? sessionTotal / subtotal : 1;
-
     if (session.items && session.items.length > 0) {
       session.items.forEach(item => {
         const rawCategory = item.category?.trim() || 'Other';
         const catName = rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1);
-        const price = (Number(item.price) || 0) * (Number(item.quantity) || 1) * taxTipRatio;
-        const converted = convertAmount(price, sessionCurrency, targetCurrency, rate);
+        const converted = toDisplay(itemAmount(session, item).ils, targetCurrency);
 
         entry.total += converted;
         entry.catTotals[catName] = (entry.catTotals[catName] || 0) + converted;
         categorySpendTotals.set(catName, (categorySpendTotals.get(catName) || 0) + converted);
       });
     } else {
-      const converted = convertAmount(sessionTotal, sessionCurrency, targetCurrency, rate);
+      const converted = toDisplay(sessionTotal(session).ils, targetCurrency);
       entry.total += converted;
       entry.catTotals['General'] = (entry.catTotals['General'] || 0) + converted;
       categorySpendTotals.set('General', (categorySpendTotals.get('General') || 0) + converted);
@@ -625,8 +574,7 @@ export function generateDailySpendingSeries(
       const entry = dailyMap.get(day);
       if (entry) {
         entry.receiptCount += 1;
-        const converted = convertAmount(Number(session.total) || 0, session.currency || 'ILS', targetCurrency, session.exchangeRate || 1);
-        entry.total += converted;
+        entry.total += toDisplay(sessionTotal(session).ils, targetCurrency);
       }
     }
   });
