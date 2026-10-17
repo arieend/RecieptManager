@@ -38,7 +38,7 @@ describe('Cropper', () => {
           this._onload();
         }
       }
-    } as any;
+    } as unknown as typeof Image;
   });
 
   it('renders cropper correctly', () => {

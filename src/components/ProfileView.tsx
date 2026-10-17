@@ -1,16 +1,19 @@
 import React from 'react';
 import { ArrowLeft, User, Mail, Shield, Settings, LogOut, ChevronRight } from 'lucide-react';
 import { Button, Card } from './ui/Base';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { Language, Translations } from '../translations';
+import { BeforeInstallPromptEvent } from '../types';
 
 interface ProfileViewProps {
-  user: any;
+  user: Pick<FirebaseUser, 'photoURL' | 'displayName' | 'email'>;
   onBack: () => void;
   onLogout: () => void;
   onReconnectDrive: () => void;
   driveToken: string | null;
-  translations: any;
+  translations: Record<Language, Translations>;
   language: 'en' | 'he';
-  deferredPrompt: any;
+  deferredPrompt: BeforeInstallPromptEvent | null;
   onInstall: () => void;
 }
 

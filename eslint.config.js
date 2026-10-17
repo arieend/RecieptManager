@@ -9,11 +9,7 @@ export default tseslint.config(
     languageOptions: { parser: tseslint.parser },
     plugins: { '@typescript-eslint': tseslint.plugin },
     linterOptions: { reportUnusedDisableDirectives: 'off' },
-    rules: { '@typescript-eslint/no-explicit-any': 'warn' },
-  },
-  {
-    // Services hold the domain seams (Session store, Receipt intake, Receipt filing); narrow `unknown` instead.
-    files: ['src/services/**/*.{ts,tsx}'],
+    // Narrow `unknown` instead, the way the Session store and Receipt intake do.
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
   },
 );

@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SettingsModal } from './SettingsModal';
@@ -6,9 +7,9 @@ import { translations } from '../translations';
 // Mock motion to avoid animation issues
 vi.mock('motion/react', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: ComponentProps<'div'>) => <div {...props}>{children}</div>,
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 describe('SettingsModal', () => {

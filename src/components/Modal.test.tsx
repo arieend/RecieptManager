@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Modal, ConfirmModal, PromptModal } from './Modal';
@@ -5,9 +6,9 @@ import { Modal, ConfirmModal, PromptModal } from './Modal';
 // Mock motion/react
 vi.mock('motion/react', () => ({
   motion: {
-    div: ({ children, onClick, className }: any) => <div onClick={onClick} className={className}>{children}</div>,
+    div: ({ children, onClick, className }: ComponentProps<'div'>) => <div onClick={onClick} className={className}>{children}</div>,
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 describe('Modal Components', () => {

@@ -61,7 +61,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
           onConfirm: (priceStr) => {
             const price = parseFloat(priceStr || '0');
             if (name && !isNaN(price) && price > 0) {
-              const familyPerson = session.people.find((p: any) => p.id === 'person-family');
+              const familyPerson = session.people.find((p) => p.id === 'person-family');
               setSession({
                 ...session,
                 items: [...session.items, { 
@@ -100,8 +100,8 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
     setSession({
       ...session,
-      people: session.people.filter((p: any) => p.id !== personId),
-      items: session.items.map((item: any) => ({
+      people: session.people.filter((p) => p.id !== personId),
+      items: session.items.map((item) => ({
         ...item,
         assignedTo: item.assignedTo.filter((id: string) => id !== personId)
       }))
@@ -111,7 +111,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   const toggleAssignment = (itemId: string, personId: string) => {
     setSession({
       ...session,
-      items: session.items.map((item: any) => 
+      items: session.items.map((item) => 
         item.id === itemId 
           ? { 
               ...item, 
@@ -127,7 +127,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   const updateQuantity = (itemId: string, quantity: number) => {
     setSession({
       ...session,
-      items: session.items.map((item: any) => 
+      items: session.items.map((item) => 
         item.id === itemId ? { ...item, quantity } : item
       )
     });

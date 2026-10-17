@@ -64,13 +64,15 @@ export const Scanner: React.FC<ScannerProps> = ({
 
       setStream(newStream);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Camera error:", err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.toLowerCase().includes('denied')) {
+      const { name, message } = typeof err === 'object' && err !== null ? (err as { name?: unknown; message?: unknown }) : {};
+      const lowerMessage = typeof message === 'string' ? message.toLowerCase() : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || lowerMessage.includes('denied')) {
         setError(t.cameraPermissionDenied);
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
         setError(language === 'he' ? 'לא נמצאה מצלמה במכשיר זה.' : 'No camera found on this device.');
-      } else if (err.message?.toLowerCase().includes('dismissed')) {
+      } else if (lowerMessage.includes('dismissed')) {
         setError(t.cameraPermissionDismissed);
       } else {
         setError(t.cameraGenericError);

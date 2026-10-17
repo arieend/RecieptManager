@@ -1,3 +1,4 @@
+import type { ReactNode, Ref } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
@@ -84,17 +85,17 @@ vi.mock('@google/genai', () => {
 // Mock motion to avoid animation issues
 vi.mock('motion/react', () => {
   const React = require('react');
-  const motion = (Component: any) => Component;
+  const motion = Object.assign(<T,>(Component: T) => Component, {} as Record<string, unknown>);
   const tags = ['div', 'main', 'span', 'button', 'section', 'h1', 'h2', 'h3', 'p', 'img', 'video', 'canvas', 'svg', 'path', 'line'];
   tags.forEach(tag => {
-    (motion as any)[tag] = React.forwardRef(({ children, ...props }: any, ref: any) => {
+    motion[tag] = React.forwardRef(({ children, ...props }: { children?: ReactNode; [prop: string]: unknown }, ref: Ref<unknown>) => {
       const { initial, animate, exit, transition, ...rest } = props;
       return React.createElement(tag, { ...rest, ref }, children);
     });
   });
   return {
     motion,
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   };
 });
 

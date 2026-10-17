@@ -10,7 +10,7 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: StorageSettings;
   onSave: (settings: StorageSettings) => void;
-  t: any;
+  t: Translations;
   language: string;
   onCreateSpreadsheet?: () => void;
   isCreatingSpreadsheet?: boolean;

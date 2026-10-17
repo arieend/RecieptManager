@@ -68,8 +68,10 @@ export const readFileAsDataUrl = (file: File | Blob): Promise<string> => {
 export const convertHeicToBlob = async (file: Blob | File): Promise<Blob> => {
   if (typeof window === 'undefined') return file;
   try {
-    const heic2anyModule = await import('heic2any');
-    const heic2any = (heic2anyModule as any).default || heic2anyModule;
+    type Heic2Any = typeof import('heic2any').default;
+    // The CommonJS build can arrive without a `default` export.
+    const heic2anyModule: { default?: Heic2Any } = await import('heic2any');
+    const heic2any = heic2anyModule.default || (heic2anyModule as unknown as Heic2Any);
     const result = await heic2any({
       blob: file,
       toType: 'image/jpeg',

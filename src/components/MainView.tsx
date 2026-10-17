@@ -1,14 +1,15 @@
 import React from 'react';
 import { Camera, FileUp, History, AlertCircle, ExternalLink, TrendingUp, PieChart, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import { translations } from '../translations';
+import { translations, Language, Translations } from '../translations';
 import { Session } from '../types';
 import { StorageSettings, getCurrencySymbol } from '../services/configService';
 import { Button } from './ui/Base';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 interface MainViewProps {
-  user: any;
-  history: any[];
+  user: Pick<FirebaseUser, 'displayName'>;
+  history: Session[];
   onScan: () => void;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUploadFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -16,7 +17,7 @@ interface MainViewProps {
   onSessionClick: (session: Session) => void;
   onSettingsClick: () => void;
   onMonthlySummaryClick?: () => void;
-  translations: any;
+  translations: Record<Language, Translations>;
   language: 'en' | 'he';
   currencySymbol: string;
   driveToken: string | null;
