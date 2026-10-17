@@ -27,25 +27,28 @@ const session = (overrides: Partial<Session> = {}): Session => ({
   ...overrides,
 });
 
+/** Reads a month or day back by its key, not its position in the series. */
+const march = (months: ReturnType<typeof getAvailableMonthsForYear>) => months.find((m) => m.monthKey === '2026-03')!;
+
 describe('getAvailableMonthsForYear', () => {
   it('totals each month in the display currency', () => {
     const months = getAvailableMonthsForYear([session(), session({ id: 's2', total: 34 })], 2026, 'ILS');
-    expect(months[2]).toMatchObject({ monthKey: '2026-03', receiptCount: 2, totalAmount: 74 });
+    expect(march(months)).toMatchObject({ receiptCount: 2, totalAmount: 74 });
   });
 
   it('gives a USD Session with no rate the fallback rate', () => {
     const months = getAvailableMonthsForYear([session({ currency: 'USD', exchangeRate: 1, total: 10 })], 2026, 'ILS');
-    expect(months[2].totalAmount).toBeCloseTo(37);
+    expect(march(months).totalAmount).toBeCloseTo(37);
   });
 
   it('converts ILS to USD at the fixed rate', () => {
     const months = getAvailableMonthsForYear([session({ total: 37 })], 2026, 'USD');
-    expect(months[2].totalAmount).toBeCloseTo(10);
+    expect(march(months).totalAmount).toBeCloseTo(10);
   });
 
   it('falls back to subtotal + tax + tip when the Session has no total', () => {
     const months = getAvailableMonthsForYear([session({ total: 0, tax: 5, tip: 5 })], 2026, 'ILS');
-    expect(months[2].totalAmount).toBe(50);
+    expect(march(months).totalAmount).toBe(50);
   });
 });
 
@@ -112,6 +115,6 @@ describe('generateDailySpendingSeries', () => {
       'ILS',
     );
     expect(days).toHaveLength(31);
-    expect(days[13]).toMatchObject({ day: 14, dateStr: '2026-03-14', receiptCount: 2, total: 77 });
+    expect(days.find((d) => d.dateStr === '2026-03-14')).toMatchObject({ day: 14, receiptCount: 2, total: 77 });
   });
 });
