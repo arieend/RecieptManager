@@ -10,11 +10,12 @@ import { Button, Badge, Modal, Input } from './ui/Base';
 import { Session } from '../types';
 import { Language, Translations } from '../translations';
 import { StorageSettings } from '../services/configService';
-import { categorizeItems, getExchangeRate } from '../services/geminiService';
+import { categorizeItems } from '../services/geminiService';
+import { RateLookup, withCurrency } from '../services/rateLookup';
 import { SummaryCard } from './SummaryCard';
 import { ItemCard } from './ItemCard';
 import { calculateTotals } from '../utils/calculations';
-import { rateToIls } from '../utils/money';
+import { isRateUnconfirmed, rateToIls } from '../utils/money';
 
 interface SessionViewProps {
   session: Session;
@@ -27,11 +28,12 @@ interface SessionViewProps {
   language: Language;
   currencySymbol: string;
   settings: StorageSettings;
+  rateLookup: RateLookup;
 }
 
 export const SessionView: React.FC<SessionViewProps> = ({ 
   session, setSession, onBack, onSave, onDelete, onChat, 
-  translations, language, currencySymbol, settings 
+  translations, language, currencySymbol, settings, rateLookup
 }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -46,6 +48,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   }>({ isOpen: false, title: '', label: '', onConfirm: () => {} });
 
   const totals = useMemo(() => calculateTotals(session), [session]);
+  const rateUnconfirmed = isRateUnconfirmed(session);
 
   const addItem = () => {
     setPromptModal({
@@ -156,28 +159,18 @@ export const SessionView: React.FC<SessionViewProps> = ({
 
   const updateCurrency = async (newCurrency: 'ILS' | 'USD' | 'EUR') => {
     if (newCurrency === session.currency) return;
-    
-    let newRate = 1;
-    if (newCurrency !== 'ILS') {
-      setIsRegenerating(true);
-      try {
-        newRate = await getExchangeRate(newCurrency, 'ILS');
-      } catch (e) {
-        console.error("Failed to fetch exchange rate:", e);
-      } finally {
-        setIsRegenerating(false);
-      }
+    setIsRegenerating(true);
+    try {
+      setSession(await withCurrency(session, newCurrency, rateLookup));
+    } finally {
+      setIsRegenerating(false);
     }
-    
-    setSession({
-      ...session,
-      currency: newCurrency,
-      exchangeRate: newRate
-    });
   };
 
+  // A rate the user gives is theirs: it confirms the Session's rate (GLOSSARY.md, Unconfirmed rate).
   const updateExchangeRate = (rate: number) => {
-    setSession({ ...session, exchangeRate: rate });
+    if (!(rate > 0)) return;
+    setSession({ ...session, exchangeRate: rate, rateConfirmed: true });
   };
 
   const pdfBlobUrl = useMemo(() => {
@@ -292,12 +285,25 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   type="number"
                   step="0.01"
                   value={rateToIls(session)}
-                  onChange={(e) => updateExchangeRate(parseFloat(e.target.value) || 1)}
+                  onChange={(e) => updateExchangeRate(parseFloat(e.target.value))}
                   className="w-20 px-2 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500"
                 />
                 <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase">1 {session.currency} = {rateToIls(session)} ₪</span>
               </div>
             </div>
+            {rateUnconfirmed && (
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <div className="space-y-1">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-widest">
+                    {translations[language].rateUnconfirmed}
+                  </span>
+                  <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{translations[language].ilsEstimated}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => updateExchangeRate(rateToIls(session))}>
+                  {translations[language].confirmSuggestedRate}
+                </Button>
+              </div>
+            )}
           </section>
         )}
 

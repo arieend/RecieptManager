@@ -73,33 +73,6 @@ export const parseReceiptImage = async (base64Image: string, mimeType: string = 
   return JSON.parse(response.text || '{}');
 };
 
-export const getExchangeRate = async (fromCurrency: string, toCurrency: string = 'ILS') => {
-  const model = "gemini-3-flash-preview";
-  const prompt = `What is the current exchange rate from ${fromCurrency} to ${toCurrency}? Return a JSON object with the 'rate' (number). If you are not sure, provide a reasonable recent estimate.`;
-  
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          rate: { type: Type.NUMBER }
-        },
-        required: ["rate"]
-      }
-    }
-  });
-
-  try {
-    const data = JSON.parse(response.text || '{"rate": 1}');
-    return data.rate || 1;
-  } catch (e) {
-    return 1;
-  }
-};
-
 export const interpretChatCommand = async (command: string, items: Pick<ReceiptItem, 'id' | 'name'>[], people: Pick<Person, 'id' | 'name'>[]) => {
   const model = "gemini-3-flash-preview";
   

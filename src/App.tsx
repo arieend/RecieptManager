@@ -11,10 +11,10 @@ import {
 import { translations, Language } from './translations';
 import { ReceiptItem, Person, Session, BeforeInstallPromptEvent } from './types';
 import { Scanner } from './components/Scanner';
-import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
+import { parseReceiptImage, interpretChatCommand } from './services/geminiService';
 import { compressImage, isPdfFile, prepareReceiptImage } from './utils/imageUtils';
 import { createReceiptIntake, ReceiptIntakeError } from './services/receiptIntake';
-import { createFrankfurterRateLookup } from './services/rateLookup';
+import { createFrankfurterRateLookup, withCurrency } from './services/rateLookup';
 import { createSessionStore } from './services/sessionStore';
 import { createFirestoreSessionAdapter } from './services/firestoreSessionAdapter';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -38,10 +38,12 @@ import { ConfirmModal } from './components/Modal';
 import { ParsingReview } from './components/ParsingReview';
 import { MonthlySummaryView } from './components/MonthlySummaryView';
 
+const rateLookup = createFrankfurterRateLookup();
+
 const receiptIntake = createReceiptIntake({
   parser: parseReceiptImage,
   prepare: prepareReceiptImage,
-  rateLookup: createFrankfurterRateLookup(),
+  rateLookup,
   now: Date.now,
   newId: () => crypto.randomUUID(),
 });
@@ -508,17 +510,10 @@ export default function App() {
           items: [...currentSession.items, newItem]
         });
       } else if (result.action === 'change_currency' && result.currency) {
-        let rate = 1;
-        if (result.currency !== 'ILS') {
-          try {
-            rate = await getExchangeRate(result.currency, 'ILS');
-          } catch (e) {
-            console.error("Rate fetch error:", e);
-          }
-        }
-        setCurrentSession({ ...currentSession, currency: result.currency, exchangeRate: rate });
-      } else if (result.action === 'update_rate' && result.rate) {
-        setCurrentSession({ ...currentSession, exchangeRate: result.rate });
+        setCurrentSession(await withCurrency(currentSession, result.currency, rateLookup));
+      } else if (result.action === 'update_rate' && Number(result.rate) > 0) {
+        // A rate the user gives through chat is theirs, so it confirms the Session's rate.
+        setCurrentSession({ ...currentSession, exchangeRate: Number(result.rate), rateConfirmed: true });
       } else {
         setShowToast(t.commandErrorMessage);
       }
@@ -674,6 +669,7 @@ export default function App() {
                 language={language}
                 currencySymbol={currencySymbol}
                 settings={settings}
+                rateLookup={rateLookup}
               />
             </motion.div>
           )}

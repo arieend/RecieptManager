@@ -36,3 +36,17 @@ export const createFrankfurterRateLookup =
       return null;
     }
   };
+
+/**
+ * The Session in a new currency. USD or EUR gets the looked-up rate for the receipt's date,
+ * Unconfirmed (null when the lookup fails); ILS gets rate 1, confirmed.
+ */
+export const withCurrency = async (
+  session: Session,
+  currency: Session['currency'],
+  lookup: RateLookup,
+): Promise<Session> => {
+  if (currency === 'ILS') return { ...session, currency, exchangeRate: 1, rateConfirmed: true };
+  const rate = await lookup(currency, rateDateOf(session.createdAt));
+  return { ...session, currency, exchangeRate: rate, rateConfirmed: false };
+};
