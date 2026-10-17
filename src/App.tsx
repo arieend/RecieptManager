@@ -18,6 +18,7 @@ import { createSessionStore } from './services/sessionStore';
 import { createFirestoreSessionAdapter } from './services/firestoreSessionAdapter';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
+import { createReceiptFiling, SyncFailureKind } from './services/receiptFiling';
 import { 
   getSettings, saveSettings, StorageSettings,
   getCurrencySymbol
@@ -46,6 +47,8 @@ const sessionStore = createSessionStore({
   shrinkImage: compressImage,
   now: Date.now,
 });
+
+const receiptFiling = createReceiptFiling({ sync: syncToCloud, store: sessionStore });
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -367,6 +370,18 @@ export default function App() {
     }
   };
 
+  const showSyncFailure = (kind: SyncFailureKind) => {
+    if (kind === 'drive-auth-expired') {
+      setShowToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.');
+      setDriveToken(null);
+      localStorage.removeItem('drive_token');
+    } else if (kind === 'sheets-disabled') {
+      setShowToast(t.sheetsApiDisabled);
+    } else {
+      setShowToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud');
+    }
+  };
+
   /** Resolves to whether the Session was persisted; failures are reported to the user here. */
   const saveSession = async (sessionToUse?: Session): Promise<boolean> => {
     const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
@@ -374,65 +389,20 @@ export default function App() {
     
     setIsSaving(true);
     try {
-      const imageUrl = session.imageUrl;
-      let driveFileId = session.driveFileId;
-      let driveLink = session.driveLink;
-      let driveFileName = session.driveFileName;
-      let spreadsheetLink = session.spreadsheetLink;
-      let items = [...session.items];
+      const { sync, spreadsheetId } = await receiptFiling.file(user.uid, session, { settings, driveToken });
 
-      // 1. Sync to Cloud (Drive & Sheets)
-      if (driveToken && (imageUrl && !driveFileId || settings.syncToSheets)) {
-        try {
-          const syncResult = await syncToCloud(session, settings, driveToken);
-          
-          if (syncResult.driveFileId) driveFileId = syncResult.driveFileId;
-          if (syncResult.driveLink) driveLink = syncResult.driveLink;
-          if (syncResult.driveFileName) driveFileName = syncResult.driveFileName;
-          if (syncResult.spreadsheetLink) spreadsheetLink = syncResult.spreadsheetLink;
-          
-          if (syncResult.itemSheetsLinks) {
-            items = items.map(item => ({
-              ...item,
-              sheetsLink: syncResult.itemSheetsLinks?.[item.id] || item.sheetsLink
-            }));
-          }
-          
-          if (syncResult.spreadsheetId) {
-            const newSettings = { ...settings, spreadsheetId: syncResult.spreadsheetId };
-            setSettings(newSettings);
-            saveSettings(newSettings);
-          }
-        } catch (syncError: any) {
-          console.error("Cloud sync error:", syncError);
-          const errorMessage = syncError.message?.toLowerCase() || '';
-          const isAuthError = syncError.status === 401 || errorMessage.includes('invalid_grant') || errorMessage.includes('401');
-
-          if (isAuthError) {
-            setShowToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.');
-            setDriveToken(null);
-            localStorage.removeItem('drive_token');
-          } else if (errorMessage.includes('sheets.googleapis.com') || errorMessage.includes('sheets api')) {
-            setShowToast(t.sheetsApiDisabled);
-          } else {
-            setShowToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud');
-          }
-        }
+      if (spreadsheetId) {
+        const newSettings = { ...settings, spreadsheetId };
+        setSettings(newSettings);
+        saveSettings(newSettings);
       }
-      
-      // 2. Persist
-      await sessionStore.save(user.uid, {
-        ...session,
-        imageUrl: imageUrl || "",
-        driveFileId: driveFileId || "",
-        driveLink: driveLink || "",
-        driveFileName: driveFileName || "",
-        spreadsheetLink: spreadsheetLink || "",
-        items,
-      });
 
-      setShowToast(t.sessionSaved);
-      setTimeout(() => setShowToast(null), 3000);
+      if (typeof sync === 'object') {
+        showSyncFailure(sync.failed);
+      } else {
+        setShowToast(t.sessionSaved);
+        setTimeout(() => setShowToast(null), 3000);
+      }
       if (!sessionToUse) {
         setView('history');
         setCurrentSession(null);
