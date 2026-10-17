@@ -65,7 +65,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         ].map(tab => (
           <button 
             key={tab.id}
-            onClick={() => setSummaryTab(tab.id as any)}
+            onClick={() => setSummaryTab(tab.id as typeof summaryTab)}
             className={`whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${summaryTab === tab.id ? 'bg-white text-emerald-700' : 'bg-white/10 text-white hover:bg-white/20'}`}
           >
             {tab.label}

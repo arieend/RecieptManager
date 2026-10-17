@@ -552,7 +552,7 @@ export const MonthlySummaryView: React.FC<MonthlySummaryViewProps> = ({
                 ].map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveChartTab(tab.id as any)}
+                    onClick={() => setActiveChartTab(tab.id as typeof activeChartTab)}
                     className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all ${
                       activeChartTab === tab.id
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
@@ -641,7 +641,7 @@ export const MonthlySummaryView: React.FC<MonthlySummaryViewProps> = ({
                                   <span className="text-emerald-400">{curSymbol}{totalVal.toFixed(2)}</span>
                                 </div>
                                 <div className="space-y-1">
-                                  {payload.map((entry: any) => (
+                                  {payload.map((entry) => (
                                     <div key={entry.name} className="flex justify-between items-center gap-3">
                                       <span className="flex items-center gap-1.5 text-slate-300">
                                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />

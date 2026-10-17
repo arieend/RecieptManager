@@ -9,7 +9,7 @@ import {
 } from './firebase';
 
 import { translations, Language } from './translations';
-import { ReceiptItem, Person, Session } from './types';
+import { ReceiptItem, Person, Session, BeforeInstallPromptEvent } from './types';
 import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
 import { compressImage, isPdfFile, prepareReceiptImage } from './utils/imageUtils';
@@ -65,7 +65,7 @@ export default function App() {
   const [isProcessingChat, setIsProcessingChat] = useState(false);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [processingQueue, setProcessingQueue] = useState<File[]>([]);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const [driveToken, setDriveToken] = useState<string | null>(() => {
@@ -145,9 +145,9 @@ export default function App() {
 
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-    const handleInstallPrompt = (e: any) => {
+    const handleInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     window.addEventListener('online', handleOnline);
@@ -251,9 +251,11 @@ export default function App() {
       }
       
       setCameraStream(stream);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Camera request failed:", err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.toLowerCase().includes('denied')) {
+      const { name, message } = typeof err === 'object' && err !== null ? (err as { name?: unknown; message?: unknown }) : {};
+      const lowerMessage = typeof message === 'string' ? message.toLowerCase() : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || lowerMessage.includes('denied')) {
         setCameraError(translations[language].cameraPermissionDenied);
       } else {
         setCameraError(translations[language].cameraGenericError);
@@ -412,7 +414,7 @@ export default function App() {
         setCurrentSession(null);
       }
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Session save error:", error);
       setShowToast(language === 'he' ? 'שגיאה בשמירה בבסיס הנתונים' : 'Error saving to database');
       return false;
@@ -750,7 +752,7 @@ export default function App() {
                 onInstall={() => {
                   if (deferredPrompt) {
                     deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult: any) => {
+                    deferredPrompt.userChoice.then((choiceResult) => {
                       if (choiceResult.outcome === 'accepted') {
                         setDeferredPrompt(null);
                       }

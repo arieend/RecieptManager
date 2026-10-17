@@ -25,7 +25,8 @@ export interface MonthlyTrendPoint {
   monthLabel: string; // e.g. 'Jan 2026'
   total: number;
   receiptCount: number;
-  [categoryName: string]: any;
+  Other?: number; // spend outside the top categories
+  [categoryName: string]: string | number;
 }
 
 export interface DailySpendingPoint {
@@ -122,15 +123,17 @@ export function convertAmount(
   return amountInIls;
 }
 
-export function parseSessionDate(dateVal: any): Date | null {
+/** Accepts a Date, a Firestore Timestamp (or its `{ seconds }` shape), epoch millis, or a date string. */
+export function parseSessionDate(dateVal: unknown): Date | null {
   if (!dateVal) return null;
   if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
-  if (typeof dateVal?.toDate === 'function') {
-    const d = dateVal.toDate();
+  const fields = typeof dateVal === 'object' ? (dateVal as { toDate?: unknown; seconds?: unknown }) : {};
+  if (typeof fields.toDate === 'function') {
+    const d: Date = fields.toDate.call(dateVal);
     return isNaN(d.getTime()) ? null : d;
   }
-  if (typeof dateVal === 'object' && typeof dateVal.seconds === 'number') {
-    const d = new Date(dateVal.seconds * 1000);
+  if (typeof fields.seconds === 'number') {
+    const d = new Date(fields.seconds * 1000);
     return isNaN(d.getTime()) ? null : d;
   }
   if (typeof dateVal === 'number') {

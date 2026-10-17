@@ -2,24 +2,24 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { HistoryView } from './HistoryView';
 import { translations } from '../translations';
+import { ReceiptItem, Session } from '../types';
 
 describe('HistoryView', () => {
-  const mockHistory = [
-    {
-      id: '1',
-      storeName: 'Store 1',
-      total: 100,
-      createdAt: new Date().toISOString(),
-      items: [{}, {}],
-    },
-    {
-      id: '2',
-      storeName: 'Store 2',
-      total: 50,
-      createdAt: new Date().toISOString(),
-      items: [{}],
-    },
-  ];
+  const item = (id: string): ReceiptItem => ({ id, name: id, price: 0, assignedTo: [], quantity: 1 });
+  const session = (id: string, total: number, items: ReceiptItem[]): Session => ({
+    id,
+    userId: 'user-1',
+    storeName: `Store ${id}`,
+    createdAt: new Date().toISOString(),
+    items,
+    people: [],
+    tax: 0,
+    tip: 0,
+    total,
+    currency: 'USD',
+    exchangeRate: 1,
+  });
+  const mockHistory = [session('1', 100, [item('a'), item('b')]), session('2', 50, [item('a')])];
 
   const mockProps = {
     history: mockHistory,

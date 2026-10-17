@@ -45,3 +45,9 @@ export interface UserProfile {
   photoURL?: string;
   createdAt: string;
 }
+
+/** Chromium's `beforeinstallprompt` event, which lib.dom does not declare. */
+export interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
