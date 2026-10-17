@@ -52,11 +52,13 @@ We test UI components by simulating user interactions and asserting on the rende
 - **Mocking Browser APIs**: We mock `navigator.mediaDevices` (Camera), `FileReader`, and `URL.createObjectURL`.
 - **Accessibility**: We use `aria-label` and `role` for robust element selection.
 
-### Integration Tests (`App.test.tsx`)
-We test the main application flow, including:
-- **Authentication**: Simulating login/logout states.
-- **Scanning**: Mocking the camera capture and AI parsing flow.
-- **History**: Verifying that past sessions are correctly rendered from Firestore.
+### App Flow Tests (`App.test.tsx`)
+These render the whole app and drive it the way a user does. Firebase, Gemini and `syncToCloud` are mocked at the top of the file, and the mocked Firebase auth signs the user in. `test/appFlow.ts` holds the steps:
+- `signInWithDrive()` gives App a Drive token, so saves sync instead of skipping sync.
+- `uploadReceipt()` picks a receipt in the upload input, which parses it and opens ParsingReview.
+- `confirmReview()` confirms ParsingReview, which opens SessionView and auto-saves.
+
+Write one when a bug or feature spans App's wiring: a module's own tests can't see how App calls it.
 
 ## 📝 Writing New Tests
 
