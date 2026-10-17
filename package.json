@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit && eslint .",
+    "lint": "tsc --noEmit && eslint . && node scripts/check-doc-paths.mjs",
     "test:coverage": "vitest run --coverage",
     "check": "npm run lint && npm run test:coverage",
     "prepare": "git config core.hooksPath .githooks || true",

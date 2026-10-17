@@ -1,4 +1,5 @@
 import { Session, ReceiptItem, Person } from '../types';
+import { itemAmount, sessionTotal, subtotal as subtotalOf } from './money';
 
 export interface Totals {
   personTotals: { id: string; name: string; amount: number }[];
@@ -12,6 +13,7 @@ export interface Totals {
   tip: number;
 }
 
+/** Splits the Session's bill, in its own currency. Every amount is a Line amount, so tax, tip and discounts are shared out. */
 export const calculateTotals = (session: Session): Totals => {
   const personTotals: Record<string, number> = {};
   const categoryTotals: Record<string, number> = {};
@@ -20,44 +22,34 @@ export const calculateTotals = (session: Session): Totals => {
   session.people.forEach((p: Person) => personTotals[p.id] = 0);
   
   let assignedSubtotal = 0;
+  let unassignedAmount = 0;
   session.items.forEach((item: ReceiptItem) => {
     const cat = item.category || 'Other';
-    const price = Number(item.price) || 0;
-    const quantity = Number(item.quantity) || 1;
-    const itemTotal = price * quantity;
+    const amount = itemAmount(session, item).original;
     
-    categoryTotals[cat] = (categoryTotals[cat] || 0) + itemTotal;
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + amount;
 
     (item.labels || []).forEach((tag: string) => {
-      tagTotals[tag] = (tagTotals[tag] || 0) + itemTotal;
+      tagTotals[tag] = (tagTotals[tag] || 0) + amount;
     });
 
     if (item.assignedTo.length > 0) {
-      assignedSubtotal += itemTotal;
-      const share = itemTotal / item.assignedTo.length;
+      assignedSubtotal += (Number(item.price) || 0) * (Number(item.quantity) || 1);
+      const share = amount / item.assignedTo.length;
       item.assignedTo.forEach((personId: string) => {
         personTotals[personId] = (personTotals[personId] || 0) + share;
       });
+    } else {
+      unassignedAmount += amount;
     }
   });
 
-  const subtotal = session.items.reduce((sum: number, item: ReceiptItem) => {
-    const price = Number(item.price) || 0;
-    const quantity = Number(item.quantity) || 1;
-    return sum + (price * quantity);
-  }, 0);
-
-  const tax = Number(session.tax) || 0;
-  const tip = Number(session.tip) || 0;
-  const sessionTotal = Number(session.total) || 0;
-
-  const totalWithTaxTip = sessionTotal || (subtotal + tax + tip);
-  const ratio = subtotal > 0 ? totalWithTaxTip / subtotal : 1;
+  const subtotal = subtotalOf(session);
 
   const finalTotals = Object.entries(personTotals).map(([id, amount]) => ({
     id,
     name: session.people.find((p: Person) => p.id === id)?.name || 'Unknown',
-    amount: amount * ratio
+    amount
   }));
 
   const finalCategoryTotals = Object.entries(categoryTotals).map(([name, amount]) => ({
@@ -70,7 +62,6 @@ export const calculateTotals = (session: Session): Totals => {
     amount
   })).sort((a, b) => b.amount - a.amount);
 
-  const unassignedAmount = (subtotal - assignedSubtotal) * ratio;
   const progress = subtotal > 0 ? (assignedSubtotal / subtotal) * 100 : 0;
 
   return { 
@@ -78,7 +69,7 @@ export const calculateTotals = (session: Session): Totals => {
     categoryTotals: finalCategoryTotals,
     tagTotals: finalTagTotals,
     subtotal, 
-    total: totalWithTaxTip,
+    total: sessionTotal(session).original,
     unassignedAmount,
     progress,
     tax: session.tax,

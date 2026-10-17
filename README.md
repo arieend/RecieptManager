@@ -70,7 +70,8 @@ GEMINI_API_KEY=your_gemini_api_key
   /services       # Business logic and API integrations
     geminiService # AI parsing and chat logic
     driveService  # Google Drive file management
-    sheetsService # Google Sheets data export
+    purchasesSheet      # The Purchases sheet: columns, find-or-create, row links
+    googleSheetsAdapter # Google Sheets HTTP calls behind the Purchases sheet
     syncService   # Orchestrates cloud synchronization
     configService # App settings and formatting utilities
   /utils          # Helper functions (calculations, image processing)

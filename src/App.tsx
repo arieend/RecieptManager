@@ -18,6 +18,8 @@ import { createSessionStore } from './services/sessionStore';
 import { createFirestoreSessionAdapter } from './services/firestoreSessionAdapter';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
+import { createPurchasesSheet } from './services/purchasesSheet';
+import { createGoogleSheetsAdapter } from './services/googleSheetsAdapter';
 import { createReceiptFiling, SyncFailureKind } from './services/receiptFiling';
 import { 
   getSettings, saveSettings, StorageSettings,
@@ -287,21 +289,11 @@ export default function App() {
     
     try {
       setIsSaving(true);
-      const { findSpreadsheetByName } = await import('./services/driveService');
-      const { createReceiptsSpreadsheet } = await import('./services/sheetsService');
-      
       const spreadsheetName = settings.spreadsheetName || 'Receipts Database';
-      
-      // 1. Try to find existing first
-      let spreadsheetId = await findSpreadsheetByName(driveToken, spreadsheetName);
-      
-      if (spreadsheetId) {
-        setShowToast(language === 'he' ? 'נמצא גיליון קיים!' : 'Found existing spreadsheet!');
-      } else {
-        // 2. Create if not found
-        spreadsheetId = await createReceiptsSpreadsheet(driveToken, spreadsheetName);
-        setShowToast(language === 'he' ? 'גיליון נוצר בהצלחה!' : 'Spreadsheet created successfully!');
-      }
+      const { spreadsheetId, created } = await createPurchasesSheet(createGoogleSheetsAdapter(driveToken)).connect(spreadsheetName);
+      setShowToast(created
+        ? (language === 'he' ? 'גיליון נוצר בהצלחה!' : 'Spreadsheet created successfully!')
+        : (language === 'he' ? 'נמצא גיליון קיים!' : 'Found existing spreadsheet!'));
       
       const newSettings = { ...settings, spreadsheetId, syncToSheets: true };
       setSettings(newSettings);

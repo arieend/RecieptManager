@@ -77,12 +77,31 @@ describe('calculateTotals', () => {
     expect(totals.progress).toBeCloseTo(90.91, 2);
   });
 
-  it('calculates category totals correctly', () => {
+  it('gives category totals as Line amounts, including the tax/tip share', () => {
     const totals = calculateTotals(mockSession);
     const food = totals.categoryTotals.find(c => c.name === 'Food');
     const drink = totals.categoryTotals.find(c => c.name === 'Drink');
-    expect(food?.amount).toBe(10);
-    expect(drink?.amount).toBe(40);
+    // ratio = 70/55
+    expect(food?.amount).toBeCloseTo(10 * 70 / 55, 10);
+    expect(drink?.amount).toBeCloseTo(40 * 70 / 55, 10);
+  });
+
+  it('makes category totals add up to the total', () => {
+    const totals = calculateTotals(mockSession);
+    const sum = totals.categoryTotals.reduce((acc, c) => acc + c.amount, 0);
+    expect(sum).toBeCloseTo(totals.total, 10);
+  });
+
+  it('gives label totals as Line amounts', () => {
+    const totals = calculateTotals(mockSession);
+    expect(totals.tagTotals.find(t => t.name === 'Tag1')?.amount).toBeCloseTo(10 * 70 / 55, 10);
+    expect(totals.tagTotals.find(t => t.name === 'Tag2')?.amount).toBeCloseTo(40 * 70 / 55, 10);
+  });
+
+  it('stays in the Session currency', () => {
+    const totals = calculateTotals({ ...mockSession, currency: 'USD', exchangeRate: 3.5 });
+    expect(totals.total).toBe(70);
+    expect(totals.categoryTotals.find(c => c.name === 'Food')?.amount).toBeCloseTo(10 * 70 / 55, 10);
   });
 
   it('handles zero subtotal correctly', () => {

@@ -5,7 +5,6 @@ import {
   transliterate, 
   sanitizeFilename, 
   formatDateTimeForFilename, 
-  formatDateForSheets,
   buildDirectoryPath, 
   getCurrencySymbol,
   StorageSettings
@@ -52,22 +51,6 @@ describe('configService', () => {
   it('formats date time for filename correctly', () => {
     const date = new Date(2024, 0, 1, 12, 30, 45); // Jan 1, 2024, 12:30:45
     expect(formatDateTimeForFilename(date)).toBe('20240101_123045');
-  });
-
-  it('formats date for sheets correctly without text quote and matching patterns', () => {
-    const date = new Date(2024, 0, 5); // Jan 5, 2024
-    // Default format DD/MM/YYYY without leading quote so Sheets parses it as a true date
-    expect(formatDateForSheets(date)).toBe("05/01/2024");
-    expect(formatDateForSheets(date).startsWith("'")).toBe(false);
-    
-    // Pattern matching
-    expect(formatDateForSheets(date, 'YYYY-MM-DD')).toBe("2024-01-05");
-    expect(formatDateForSheets(date, 'MM/DD/YYYY')).toBe("01/05/2024");
-    expect(formatDateForSheets(date, 'DD.MM.YYYY')).toBe("05.01.2024");
-    expect(formatDateForSheets(date, 'DD-MM-YYYY')).toBe("05-01-2024");
-    
-    const date2 = new Date(2024, 11, 31); // Dec 31, 2024
-    expect(formatDateForSheets(date2)).toBe("31/12/2024");
   });
 
   it('builds directory path correctly', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getOrCreateFolder, getOrCreateFolderPath, uploadFileToDrive, DRIVE_API_URL } from './driveService';
+import { getOrCreateFolder, getOrCreateFolderPath, uploadFileToDrive, findSpreadsheetByName, DRIVE_API_URL } from './driveService';
 
 describe('driveService', () => {
   const mockToken = 'mock-token';
@@ -10,6 +10,21 @@ describe('driveService', () => {
     vi.clearAllMocks();
     fetchMock = vi.fn();
     global.fetch = fetchMock;
+  });
+
+  it('findSpreadsheetByName returns the first match, or null when none has the name', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ files: [{ id: 'sheet-1' }] }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ files: [] }) });
+
+    expect(await findSpreadsheetByName(mockToken, 'Receipts')).toBe('sheet-1');
+    expect(await findSpreadsheetByName(mockToken, 'Receipts')).toBeNull();
+  });
+
+  it('findSpreadsheetByName fails with the status instead of reporting no match', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({ error: { message: 'Backend Error' } }) });
+
+    await expect(findSpreadsheetByName(mockToken, 'Receipts')).rejects.toMatchObject({ message: 'Backend Error', status: 503 });
   });
 
   it('getOrCreateFolder returns existing folder ID', async () => {

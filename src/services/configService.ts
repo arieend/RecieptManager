@@ -85,55 +85,6 @@ export const formatDateTimeForFilename = (date: Date): string => {
   return `${d}_${t}`;
 };
 
-export const formatDateForSheets = (date: Date, pattern: string = 'DD/MM/YYYY'): string => {
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const day = pad(date.getDate());
-  const month = pad(date.getMonth() + 1);
-  const year = date.getFullYear().toString();
-  const shortYear = year.slice(-2);
-  const shortDay = date.getDate().toString();
-  const shortMonth = (date.getMonth() + 1).toString();
-
-  const normalized = (pattern || 'DD/MM/YYYY').toUpperCase().trim();
-
-  // Match ISO / YYYY-MM-DD
-  if (normalized.includes('YYYY-MM-DD') || normalized === 'YYYY-MM-DD') {
-    return `${year}-${month}-${day}`;
-  }
-  if (normalized.includes('YYYY/MM/DD') || normalized === 'YYYY/MM/DD') {
-    return `${year}/${month}/${day}`;
-  }
-
-  // Match MM/DD/YYYY or M/D/YYYY
-  if (normalized === 'M/D/YYYY' || normalized === 'M/D/YY') {
-    return `${shortMonth}/${shortDay}/${normalized.includes('YYYY') ? year : shortYear}`;
-  }
-  if (normalized.startsWith('MM/DD') || normalized.startsWith('M/D') || normalized === 'MM/DD/YYYY' || normalized === 'MM/DD/YY') {
-    return `${month}/${day}/${normalized.includes('YYYY') ? year : shortYear}`;
-  }
-
-  // Match DD.MM.YYYY
-  if (normalized.includes('.')) {
-    if (normalized.startsWith('D.')) {
-      return `${shortDay}.${shortMonth}.${year}`;
-    }
-    return `${day}.${month}.${year}`;
-  }
-
-  // Match DD-MM-YYYY
-  if (normalized.includes('-') && normalized.startsWith('DD')) {
-    return `${day}-${month}-${year}`;
-  }
-
-  // Match D/M/YYYY
-  if (normalized === 'D/M/YYYY' || normalized === 'D/M/YY') {
-    return `${shortDay}/${shortMonth}/${normalized.includes('YYYY') ? year : shortYear}`;
-  }
-
-  // Default: DD/MM/YYYY without leading quote so Sheets parses as a native date
-  return `${day}/${month}/${year}`;
-};
-
 export const buildDirectoryPath = (settings: StorageSettings, date: Date): string[] => {
   // Split the storage path by backslash or forward slash
   const pathParts = settings.storagePath.split(/[\\/]/).filter(p => p.trim() !== '' && p !== 'Google Drive:');

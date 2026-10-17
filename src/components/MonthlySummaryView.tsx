@@ -46,7 +46,6 @@ import {
   generateMonthlyTrendSeries, 
   generateDailySpendingSeries,
   getCategoryColor,
-  convertAmount,
   parseSessionDate,
   CategorySummaryItem
 } from '../utils/monthlySummary';
