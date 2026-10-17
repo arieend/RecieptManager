@@ -81,6 +81,12 @@ describe('SessionView', () => {
     expect(screen.getAllByText('Family').length).toBeGreaterThan(0);
   });
 
+  it('shows the fixed rate Money uses when a USD Session has a stored rate of 1', () => {
+    render(<SessionView {...mockProps} session={{ ...mockSession, exchangeRate: 1 }} />);
+    expect(screen.getByText('1 USD = 3.7 ₪')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('3.7')).toBeInTheDocument();
+  });
+
   it('calls onBack when back button is clicked', () => {
     render(<SessionView {...mockProps} />);
     const backBtn = screen.getByRole('button', { name: /back/i });
