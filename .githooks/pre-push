@@ -1,4 +1,9 @@
 #!/bin/sh
 # Runs what CI runs (typecheck, ESLint, tests with coverage floors) before anything leaves this machine.
 # Installed by `npm install` via the prepare script; skip once with `git push --no-verify`.
+if [ ! -d node_modules/.bin ]; then
+  echo "pre-push: no node_modules in $(pwd), so npm run check can't run." >&2
+  echo "A fresh git worktree has none: link the main checkout's, or run npm ci. See DEVELOPMENT.md, Worktrees." >&2
+  exit 1
+fi
 exec npm run check

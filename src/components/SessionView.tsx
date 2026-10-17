@@ -170,7 +170,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
   };
 
   // A rate the user gives is theirs: it confirms the Session's rate (GLOSSARY.md, Unconfirmed rate).
-  const updateExchangeRate = (rate: number) => {
+  const updateExchangeRate = (rate: number | null) => {
     if (!isUsableRate(rate)) return;
     setSession({ ...session, exchangeRate: rate, rateConfirmed: true });
   };
@@ -301,7 +301,7 @@ export const SessionView: React.FC<SessionViewProps> = ({
                   </span>
                   <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{translations[language].ilsEstimated}</p>
                 </div>
-                <Button variant="outline" size="sm" disabled={rateUnknown} onClick={() => updateExchangeRate(rateToIls(session))}>
+                <Button variant="outline" size="sm" disabled={rateUnknown} onClick={() => updateExchangeRate(session.exchangeRate)}>
                   {translations[language].acceptRate}
                 </Button>
               </div>

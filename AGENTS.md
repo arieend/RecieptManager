@@ -6,6 +6,10 @@
 
 Diff, review and branch from `origin/main` after `git fetch`. Local `main` is not kept current, so it can trail already-merged PRs.
 
+## Worktrees
+
+A fresh worktree has no `node_modules`, so `npm run check` and pushes fail there. Link it first: see DEVELOPMENT.md, Worktrees.
+
 ## Agent skills
 
 ### Issue tracker
