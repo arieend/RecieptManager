@@ -9,6 +9,9 @@ All notable changes to the Receipt Manager project will be documented in this fi
 - **Session totals**: category and label totals on a receipt now include each item's share of tax and tip, so they add up to the receipt total.
 - **Monthly summary**: a USD or EUR receipt with no exchange rate now converts at the fixed fallback rate instead of 1, and a receipt with no total uses its subtotal plus tax and tip.
 
+### Fixed
+- **Duplicate Purchases sheet rows**: re-saving a receipt no longer adds its rows to the Purchases sheet again. A receipt's rows are written once; later edits change only the app, and the receipt screen says so. Rows duplicated by earlier versions are left as they are and can be deleted by hand.
+
 ## [1.0.0] - 2026-04-03
 
 ### Added

@@ -56,8 +56,10 @@ const withSpreadsheetId = (outcome: FilingOutcome, spreadsheetId?: string): Fili
 export const createReceiptFiling = ({ sync, store }: ReceiptFilingDeps) => {
   const file = async (userId: string, session: Session, context: FilingContext): Promise<FilingOutcome> => {
     const { driveToken } = context;
-    // An Unconfirmed rate never reaches the Purchases sheet (ADR-0003); Drive still gets the image.
-    const settings = isRateUnconfirmed(session) ? { ...context.settings, syncToSheets: false } : context.settings;
+    // An Unconfirmed rate never reaches the Purchases sheet (ADR-0003), and a Session already on it
+    // never reaches it again (ADR-0004); Drive still gets the image.
+    const keepOffSheet = isRateUnconfirmed(session) || !!session.spreadsheetLink;
+    const settings = keepOffSheet ? { ...context.settings, syncToSheets: false } : context.settings;
     const imageNeedsUpload = !!session.imageUrl && !session.driveFileId;
     if (!driveToken || !(imageNeedsUpload || settings.syncToSheets)) {
       return { saved: await store.save(userId, withLinks(session)), sync: 'skipped' };

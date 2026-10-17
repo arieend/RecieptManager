@@ -215,6 +215,22 @@ describe('SessionView', () => {
     });
   });
 
+  describe('Purchases sheet notice', () => {
+    const filed = { ...mockSession, spreadsheetLink: 'https://docs.google.com/spreadsheets/d/sheet-1/edit' };
+
+    it.each(['en', 'he'] as const)('says in %s that later edits do not reach the sheet, for a Session already on it', (language) => {
+      render(<SessionView {...mockProps} session={filed} language={language} />);
+
+      expect(screen.getByText(translations[language].sheetKeepsFiledRows)).toBeInTheDocument();
+    });
+
+    it('is absent for a Session not on the sheet', () => {
+      render(<SessionView {...mockProps} />);
+
+      expect(screen.queryByText(translations.en.sheetKeepsFiledRows)).not.toBeInTheDocument();
+    });
+  });
+
   it('opens image modal when eye icon is clicked', () => {
     render(<SessionView {...mockProps} />);
     const eyeBtn = screen.getByRole('button', { name: /view image/i });

@@ -47,6 +47,12 @@ const synced: SyncResult = {
   },
 };
 
+const uploaded: SyncResult = {
+  driveFileId: synced.driveFileId,
+  driveLink: synced.driveLink,
+  driveFileName: synced.driveFileName,
+};
+
 /** A fake sync that records its calls and answers with `respond`. */
 const fakeSync = (respond: () => Promise<SyncResult> = async () => synced) => {
   const calls: Parameters<ReceiptSync>[] = [];
@@ -141,6 +147,89 @@ describe('Receipt filing', () => {
     expect(sync.calls[1][1].syncToSheets).toBe(true);
   });
 
+  it('syncs to Sheets once after the rate is confirmed, however often it is saved again', async () => {
+    const sync = fakeSync(async () => (sync.calls.length === 1 ? { driveFileId: 'file-1' } : synced));
+    const { filing } = setup(sync);
+    const first = await filing.file('user-1', unconfirmed(), { settings: settings(), driveToken: 'token' });
+    const confirmed = await filing.file('user-1', { ...first.saved, rateConfirmed: true }, { settings: settings(), driveToken: 'token' });
+
+    await filing.file('user-1', confirmed.saved, { settings: settings(), driveToken: 'token' });
+    await filing.file('user-1', confirmed.saved, { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls.map((call) => call[1].syncToSheets)).toEqual([false, true]);
+  });
+
+  const onSheet = (overrides: Partial<Session> = {}) => session({
+    driveFileId: synced.driveFileId,
+    driveLink: synced.driveLink,
+    driveFileName: synced.driveFileName,
+    spreadsheetLink: synced.spreadsheetLink,
+    ...overrides,
+  });
+
+  it('never asks sync to write to Sheets for a Session already on the Purchases sheet', async () => {
+    const sync = fakeSync();
+    const { filing, history } = setup(sync);
+
+    const outcome = await filing.file('user-1', onSheet(), { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toEqual([]);
+    expect(outcome.sync).toBe('skipped');
+    expect(outcome.saved.spreadsheetLink).toBe(synced.spreadsheetLink);
+    expect(history.sessions).toEqual([outcome.saved]);
+  });
+
+  it('still uploads the image of a Session already on the Purchases sheet, with Sheets off', async () => {
+    const sync = fakeSync(async () => uploaded);
+    const { filing } = setup(sync);
+
+    const outcome = await filing.file('user-1', onSheet({ driveFileId: '', driveLink: '', driveFileName: '' }), { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toHaveLength(1);
+    expect(sync.calls[0][1]).toMatchObject({ syncToSheets: false, spreadsheetId: 'sheet-1' });
+    expect(outcome.sync).toBe('done');
+    expect(outcome.saved).toMatchObject({ ...uploaded, spreadsheetLink: synced.spreadsheetLink });
+  });
+
+  it('saves a filed Session again without changes as skipped, with the same links', async () => {
+    const sync = fakeSync();
+    const { filing } = setup(sync);
+    const first = await filing.file('user-1', session(), { settings: settings(), driveToken: 'token' });
+
+    const again = await filing.file('user-1', first.saved, { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toHaveLength(1);
+    expect(again.sync).toBe('skipped');
+    expect(again.saved).toMatchObject({
+      driveFileId: first.saved.driveFileId,
+      driveLink: first.saved.driveLink,
+      driveFileName: first.saved.driveFileName,
+      spreadsheetLink: first.saved.spreadsheetLink,
+    });
+    expect(again.saved.items.map((i) => i.sheetsLink)).toEqual(first.saved.items.map((i) => i.sheetsLink));
+  });
+
+  it('keeps a Session on its old spreadsheet off a newly chosen one', async () => {
+    const sync = fakeSync();
+    const { filing } = setup(sync);
+
+    const outcome = await filing.file('user-1', onSheet(), { settings: settings({ spreadsheetId: 'sheet-2' }), driveToken: 'token' });
+
+    expect(sync.calls).toEqual([]);
+    expect(outcome.saved.spreadsheetLink).toBe(synced.spreadsheetLink);
+  });
+
+  it('syncs to Sheets a Session filed while Sheets sync was off, once sync is on', async () => {
+    const sync = fakeSync(async () => (sync.calls.length === 1 ? uploaded : synced));
+    const { filing } = setup(sync);
+    const first = await filing.file('user-1', session(), { settings: settings({ syncToSheets: false }), driveToken: 'token' });
+
+    const second = await filing.file('user-1', first.saved, { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls[1][1].syncToSheets).toBe(true);
+    expect(second.saved.spreadsheetLink).toBe(synced.spreadsheetLink);
+  });
+
   it.each([
     ['a confirmed rate', session({ currency: 'USD', exchangeRate: 3.1268, rateConfirmed: true })],
     ['an old Session with no rate flag', session({ currency: 'USD', exchangeRate: 1 })],
@@ -218,12 +307,6 @@ describe('Receipt filing', () => {
     expect(outcome.sync).toEqual({ failed: kind });
     expect(history.sessions).toEqual([outcome.saved]);
   });
-
-  const uploaded: SyncResult = {
-    driveFileId: synced.driveFileId,
-    driveLink: synced.driveLink,
-    driveFileName: synced.driveFileName,
-  };
 
   it('saves the Drive links when Sheets fails after the Drive upload, so the next save does not upload again', async () => {
     const sync = fakeSync(async () => { throw new SheetsSyncError(uploaded, new Error('Failed to append to spreadsheet')); });
