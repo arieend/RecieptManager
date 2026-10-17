@@ -2,6 +2,10 @@
 
 `npm run check` passes: it runs what CI runs (typecheck plus tests with coverage floors). `npm test` alone skips the coverage floors.
 
+## Comparing against main
+
+Diff, review and branch from `origin/main` after `git fetch`. Local `main` is not kept current, so it can trail already-merged PRs.
+
 ## Agent skills
 
 ### Issue tracker
