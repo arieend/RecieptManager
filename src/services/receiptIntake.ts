@@ -30,6 +30,8 @@ export interface ReceiptIntakeDeps {
   parser: ReceiptParser;
   prepare: ImagePreparer;
   now: () => number;
+  /** Mints the Draft Session's ID, which it keeps once saved. */
+  newId: () => string;
 }
 
 export type ReceiptIntakeErrorKind = 'unreadable-file' | 'parse-failed';
@@ -95,7 +97,7 @@ const toItems = (rawItems: unknown): ReceiptItem[] =>
     assignedTo: [HOUSEHOLD_PERSON.id]
   }));
 
-export const createReceiptIntake = ({ parser, prepare, now }: ReceiptIntakeDeps) => {
+export const createReceiptIntake = ({ parser, prepare, now, newId }: ReceiptIntakeDeps) => {
   const prepareOrFail = async (input: File | string) => {
     try {
       return await prepare(input);
@@ -125,7 +127,7 @@ export const createReceiptIntake = ({ parser, prepare, now }: ReceiptIntakeDeps)
       const storeName = toText(raw.store_or_brand_name);
 
       return {
-        id: now().toString(),
+        id: newId(),
         userId,
         storeName: storeName ?? 'unknown',
         englishStoreName: toText(raw.store_name_english) ?? storeName ?? 'unknown',

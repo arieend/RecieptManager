@@ -35,6 +35,7 @@ export interface Session {
   driveLink?: string;
   driveFileName?: string;
   spreadsheetLink?: string;
+  updatedAt?: string;
 }
 
 export interface UserProfile {

@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Sparkles } from 'lucide-react';
 
 import { 
-  auth, db, googleProvider, signInWithPopup, signOut, 
-  collection, addDoc, query, where, onSnapshot, orderBy, limit,
-  deleteDoc, doc, setDoc, handleFirestoreError, OperationType,
+  auth, googleProvider, signInWithPopup, signOut, saveUserProfile,
   GoogleAuthProvider
 } from './firebase';
 
@@ -16,6 +14,8 @@ import { Scanner } from './components/Scanner';
 import { parseReceiptImage, interpretChatCommand, getExchangeRate } from './services/geminiService';
 import { compressImage, isPdfFile, prepareReceiptImage } from './utils/imageUtils';
 import { createReceiptIntake, ReceiptIntakeError } from './services/receiptIntake';
+import { createSessionStore } from './services/sessionStore';
+import { createFirestoreSessionAdapter } from './services/firestoreSessionAdapter';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { syncToCloud } from './services/syncService';
 import { 
@@ -37,6 +37,13 @@ import { MonthlySummaryView } from './components/MonthlySummaryView';
 const receiptIntake = createReceiptIntake({
   parser: parseReceiptImage,
   prepare: prepareReceiptImage,
+  now: Date.now,
+  newId: () => crypto.randomUUID(),
+});
+
+const sessionStore = createSessionStore({
+  adapter: createFirestoreSessionAdapter(),
+  shrinkImage: compressImage,
   now: Date.now,
 });
 
@@ -113,21 +120,15 @@ export default function App() {
       setUser(user);
       setIsAuthLoading(false);
       if (user) {
-        const q = query(
-          collection(db, 'sessions'),
-          where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
-        );
-        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-          const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
+        unsubscribeSnapshot = sessionStore.subscribe(user.uid, (sessions) => {
           setHistory(sessions);
           setIsQuotaExceeded(false);
         }, (error) => {
-          if (error instanceof Error && error.message.includes('Quota limit exceeded')) {
+          if (error.kind === 'quota-exceeded') {
             setIsQuotaExceeded(true);
             console.warn("Firestore quota exceeded. Real-time updates paused.");
           } else {
-            handleFirestoreError(error, OperationType.LIST, 'sessions');
+            console.error("History subscription error:", error);
           }
         });
       } else {
@@ -175,13 +176,7 @@ export default function App() {
         console.warn("No access token returned from Google login.");
       }
 
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        createdAt: new Date().toISOString()
-      }, { merge: true });
+      await saveUserProfile(user);
     } catch (error) {
       console.error("Login error:", error);
       setShowToast(language === 'he' ? 'שגיאה בהתחברות. נסה שוב.' : 'Login failed. Please try again.');
@@ -353,16 +348,8 @@ export default function App() {
       try {
         const draft = await receiptIntake.intake(file, user.uid);
 
-        // Auto-save if enabled
-        if (settings.autoSave) {
-          await saveSession(draft);
-        } else {
-          // If not auto-saving, we still need to add it to history if it's a batch
-          const updatedHistory = [draft, ...history];
-          setHistory(updatedHistory);
-          localStorage.setItem(`history_${user.uid}`, JSON.stringify(updatedHistory));
-        }
-        
+        // A batch has no review step, so it always saves; auto-save only governs the review screen.
+        await saveSession(draft);
         results.push(draft);
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err);
@@ -387,7 +374,7 @@ export default function App() {
     
     setIsSaving(true);
     try {
-      let imageUrl = session.imageUrl;
+      const imageUrl = session.imageUrl;
       let driveFileId = session.driveFileId;
       let driveLink = session.driveLink;
       let driveFileName = session.driveFileName;
@@ -433,34 +420,16 @@ export default function App() {
         }
       }
       
-      // 2. Compress image if needed for Firestore
-      if (imageUrl && imageUrl.length > 800000) {
-        imageUrl = await compressImage(imageUrl, 800000);
-        if (imageUrl.length > 950000 && driveLink) imageUrl = "";
-      }
-
-      // 3. Prepare and save to Firestore
-      const sessionData: any = {
+      // 2. Persist
+      await sessionStore.save(user.uid, {
         ...session,
-        userId: user.uid,
         imageUrl: imageUrl || "",
         driveFileId: driveFileId || "",
         driveLink: driveLink || "",
         driveFileName: driveFileName || "",
         spreadsheetLink: spreadsheetLink || "",
-        items: items,
-        updatedAt: new Date().toISOString()
-      };
-      delete sessionData.id;
-
-      const isExisting = session.id && session.id.length > 15;
-      if (isExisting) {
-        await setDoc(doc(db, 'sessions', session.id), sessionData, { merge: true });
-      } else {
-        const docRef = await addDoc(collection(db, 'sessions'), sessionData);
-        if (!sessionToUse) setCurrentSession({ ...session, id: docRef.id });
-        else setCurrentSession(prev => prev?.id === session.id ? { ...session, id: docRef.id } : prev);
-      }
+        items,
+      });
 
       setShowToast(t.sessionSaved);
       setTimeout(() => setShowToast(null), 3000);
@@ -469,9 +438,8 @@ export default function App() {
         setCurrentSession(null);
       }
     } catch (error: any) {
-      console.error("Firestore save error:", error);
+      console.error("Session save error:", error);
       setShowToast(language === 'he' ? 'שגיאה בשמירה בבסיס הנתונים' : 'Error saving to database');
-      handleFirestoreError(error, OperationType.WRITE, 'sessions');
     } finally {
       setIsSaving(false);
     }
@@ -488,18 +456,15 @@ export default function App() {
       isDanger: true,
       onConfirm: async () => {
         try {
-          // Only delete from Firestore if it's actually there (not a local-only session)
-          const existsInFirestore = history.some(s => s.id === id);
-          if (existsInFirestore) {
-            await deleteDoc(doc(db, 'sessions', id));
-          }
+          await sessionStore.remove(id);
           
           if (currentSession?.id === id) {
             setCurrentSession(null);
             setView('history');
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `sessions/${id}`);
+          console.error("Session delete error:", error);
+          setShowToast(language === 'he' ? 'שגיאה במחיקה' : 'Error deleting receipt');
         }
       }
     });
@@ -764,8 +729,12 @@ export default function App() {
                 onSessionClick={(s) => { setCurrentSession(s); setView('session'); }}
                 onDeleteSession={(id) => deleteSession(id)}
                 onClearAll={async () => {
-                  for (const session of history) {
-                    await deleteDoc(doc(db, 'sessions', session.id));
+                  if (!user) return;
+                  try {
+                    await sessionStore.removeAll(user.uid);
+                  } catch (error) {
+                    console.error("Clear history error:", error);
+                    setShowToast(language === 'he' ? 'שגיאה במחיקה' : 'Error deleting receipts');
                   }
                 }}
                 translations={translations}
