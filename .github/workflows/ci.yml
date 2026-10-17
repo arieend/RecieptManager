@@ -20,7 +20,7 @@ jobs:
           cache: npm
       # Fails if package-lock.json is out of sync with package.json.
       - run: npm ci
-      - name: Typecheck
+      - name: Typecheck and lint
         run: npm run lint
       - name: Tests with coverage thresholds
         run: npm run test:coverage

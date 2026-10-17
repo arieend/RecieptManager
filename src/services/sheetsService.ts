@@ -1,6 +1,27 @@
 
 const SHEETS_API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
 
+// Only the fields detectSpreadsheetDateFormat asks the Sheets API for.
+interface SheetMeta {
+  properties?: { sheetId?: number; title?: string };
+}
+
+interface SheetNumberFormat {
+  type?: string;
+  pattern?: string;
+}
+
+interface SheetCell {
+  formattedValue?: string;
+  userEnteredValue?: { stringValue?: string };
+  userEnteredFormat?: { numberFormat?: SheetNumberFormat };
+  effectiveFormat?: { numberFormat?: SheetNumberFormat };
+}
+
+interface SheetRow {
+  values?: SheetCell[];
+}
+
 export interface SheetDateFormatInfo {
   pattern: string; // e.g., 'DD/MM/YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY'
   sheetsPattern: string; // e.g., 'dd/mm/yyyy', 'yyyy-mm-dd'
@@ -193,11 +214,11 @@ export const detectSpreadsheetDateFormat = async (
     }
 
     const meta = await metaRes.json();
-    const sheetsList = meta.sheets || [];
+    const sheetsList: SheetMeta[] = meta.sheets || [];
     const locale: string = meta.properties?.locale || '';
 
     // Determine target sheet
-    let targetSheet = sheetsList.find((s: any) => s.properties?.title?.toLowerCase() === preferredSheetTitle.toLowerCase());
+    let targetSheet = sheetsList.find((s: SheetMeta) => s.properties?.title?.toLowerCase() === preferredSheetTitle.toLowerCase());
     if (!targetSheet && sheetsList.length > 0) {
       targetSheet = sheetsList[0];
     }
@@ -219,7 +240,7 @@ export const detectSpreadsheetDateFormat = async (
 
     const dataJson = await dataRes.json();
     const sheetData = dataJson.sheets?.[0]?.data?.[0];
-    const rowData: any[] = sheetData?.rowData || [];
+    const rowData: SheetRow[] = sheetData?.rowData || [];
 
     if (rowData.length === 0) {
       return deriveFormatFromLocale(locale, defaultInfo);
@@ -294,7 +315,7 @@ export const ensureDateColumnFormat = async (
   endRowIndex?: number
 ): Promise<void> => {
   try {
-    const range: any = {
+    const range: { sheetId: number; startColumnIndex: number; endColumnIndex: number; startRowIndex?: number; endRowIndex?: number } = {
       sheetId,
       startColumnIndex: columnIndex,
       endColumnIndex: columnIndex + 1,
@@ -339,7 +360,7 @@ export const ensureDateColumnFormat = async (
 export const appendToSpreadsheet = async (
   token: string,
   spreadsheetId: string,
-  rows: any[][]
+  rows: unknown[][]
 ): Promise<string> => {
   const range = 'Purchases!A1';
   const response = await fetch(
