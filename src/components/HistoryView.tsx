@@ -3,6 +3,7 @@ import { ArrowLeft, History, Trash2, ChevronRight, Calendar, Receipt, Table, Tre
 import { Button, Card } from './ui/Base';
 import { ConfirmModal } from './Modal';
 import { Session } from '../types';
+import { sessionTotal } from '../utils/money';
 import { Language, Translations } from '../translations';
 import { StorageSettings } from '../services/configService';
 
@@ -118,11 +119,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <div className="text-right">
                   <p className="text-xl font-black text-slate-900 dark:text-white">
                     {session.currency === 'ILS' ? '₪' : session.currency === 'USD' ? '$' : session.currency === 'EUR' ? '€' : currencySymbol}
-                    {session.total?.toFixed(2)}
+                    {sessionTotal(session).original.toFixed(2)}
                   </p>
                   {session.currency && session.currency !== 'ILS' && (
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">
-                      ≈ ₪{(session.total * (session.exchangeRate || 1)).toFixed(2)}
+                      ≈ ₪{sessionTotal(session).ils.toFixed(2)}
                     </p>
                   )}
                   <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">

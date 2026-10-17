@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rateToIls, itemAmount, sessionTotal, subtotal, toDisplay } from './money';
+import { rateToIls, itemAmount, sessionTotal, subtotal, toDisplay, toIls } from './money';
 import { ReceiptItem, Session } from '../types';
 
 const item = (overrides: Partial<ReceiptItem> = {}): ReceiptItem => ({
@@ -40,6 +40,20 @@ describe('rateToIls', () => {
   it('treats a missing or unknown currency as ILS', () => {
     expect(rateToIls({ currency: undefined as unknown as Session['currency'], exchangeRate: 3 })).toBe(1);
     expect(rateToIls({ currency: 'GBP' as Session['currency'], exchangeRate: 5 })).toBe(1);
+  });
+});
+
+describe('toIls', () => {
+  it("converts an amount in the Session's currency at its rate", () => {
+    expect(toIls(10, { currency: 'USD', exchangeRate: 3.6 })).toBeCloseTo(36);
+  });
+
+  it('uses the fixed rate when a foreign Session has a rate of 1', () => {
+    expect(toIls(100, { currency: 'USD', exchangeRate: 1 })).toBeCloseTo(370);
+  });
+
+  it('leaves an ILS amount as is', () => {
+    expect(toIls(42, { currency: 'ILS', exchangeRate: 3.5 })).toBe(42);
   });
 });
 

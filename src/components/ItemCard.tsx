@@ -2,24 +2,24 @@ import React from 'react';
 import { Table } from 'lucide-react';
 import { Card } from './ui/Base';
 import { ReceiptItem, Person } from '../types';
+import { RatedSession, toIls } from '../utils/money';
 import { Translations } from '../translations';
 
 interface ItemCardProps {
   item: ReceiptItem;
   people: Person[];
   currencySymbol: string;
-  currency: 'ILS' | 'USD' | 'EUR';
-  exchangeRate: number;
+  session: RatedSession;
   onToggleAssignment: (itemId: string, personId: string) => void;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   translations: Translations;
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({ 
-  item, people, currencySymbol, currency, exchangeRate, onToggleAssignment, onUpdateQuantity, translations 
+  item, people, currencySymbol, session, onToggleAssignment, onUpdateQuantity, translations 
 }) => {
-  const rate = exchangeRate || 1;
-  const priceInNIS = item.price * rate;
+  const { currency } = session;
+  const unitPriceIls = toIls(item.price, session);
 
   return (
     <Card className="p-4 space-y-4">
@@ -57,7 +57,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
             <div className="flex flex-col">
               <p className="text-sm font-black text-emerald-600">{currencySymbol}{item.price.toFixed(2)}</p>
               {currency !== 'ILS' && (
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">≈ ₪{priceInNIS.toFixed(2)}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">≈ ₪{unitPriceIls.toFixed(2)}</p>
               )}
             </div>
             
