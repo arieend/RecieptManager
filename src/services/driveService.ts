@@ -1,3 +1,5 @@
+import { GoogleApiError } from './googleApiError';
+
 
 export const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3';
 export const UPLOAD_API_URL = 'https://www.googleapis.com/upload/drive/v3';
@@ -50,7 +52,7 @@ export const getOrCreateFolder = async (token: string, folderName: string, paren
   const responseData = await createResponse.json();
   if (!createResponse.ok) {
     const errorMessage = responseData.error?.message || 'Failed to create folder';
-    throw Object.assign(new Error(errorMessage), { status: createResponse.status });
+    throw new GoogleApiError(errorMessage, createResponse.status);
   }
   return responseData.id;
 };
@@ -66,7 +68,7 @@ export const findSpreadsheetByName = async (token: string, name: string): Promis
   const data = await response.json();
   // A failed search must not read as "not found", or the caller creates a duplicate.
   if (!response.ok) {
-    throw Object.assign(new Error(data.error?.message || 'Failed to search for spreadsheet'), { status: response.status });
+    throw new GoogleApiError(data.error?.message || 'Failed to search for spreadsheet', response.status);
   }
   if (data.files && data.files.length > 0) {
     return data.files[0].id;
@@ -132,7 +134,7 @@ export const uploadFileToDrive = async (
   if (!response.ok) {
     const errorData = await response.json();
     const errorMessage = errorData.error?.message || 'Failed to upload to Drive';
-    throw Object.assign(new Error(errorMessage), { status: response.status });
+    throw new GoogleApiError(errorMessage, response.status);
   }
 
   return await response.json();

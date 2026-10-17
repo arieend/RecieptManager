@@ -10,7 +10,7 @@ interface ProfileViewProps {
   onBack: () => void;
   onLogout: () => void;
   onReconnectDrive: () => void;
-  driveToken: string | null;
+  isDriveConnected: boolean;
   translations: Record<Language, Translations>;
   language: 'en' | 'he';
   deferredPrompt: BeforeInstallPromptEvent | null;
@@ -18,7 +18,7 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ 
-  user, onBack, onLogout, onReconnectDrive, driveToken, translations, language,
+  user, onBack, onLogout, onReconnectDrive, isDriveConnected, translations, language,
   deferredPrompt, onInstall
 }) => (
   <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -56,12 +56,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </h4>
         <Card className="p-4 flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${driveToken ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDriveConnected ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
               <Settings size={20} />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-white">
-                {driveToken ? translations[language].driveConnected : translations[language].driveDisconnected}
+                {isDriveConnected ? translations[language].driveConnected : translations[language].driveDisconnected}
               </p>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium italic">
                 {language === 'he' ? 'שומר חשבוניות בתיקיית RECEIPTS' : 'Saving receipts to RECEIPTS folder'}

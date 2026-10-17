@@ -21,13 +21,13 @@ interface MainViewProps {
   translations: Record<Language, Translations>;
   language: 'en' | 'he';
   currencySymbol: string;
-  driveToken: string | null;
+  isDriveConnected: boolean;
   onReconnectDrive: () => void;
   settings: StorageSettings;
 }
 
 export const MainView: React.FC<MainViewProps> = ({
-  user, history, onScan, onUpload, onUploadFolder, onHistoryClick, onSessionClick, onSettingsClick, onMonthlySummaryClick, language, currencySymbol, driveToken, onReconnectDrive, settings
+  user, history, onScan, onUpload, onUploadFolder, onHistoryClick, onSessionClick, onSettingsClick, onMonthlySummaryClick, language, currencySymbol, isDriveConnected, onReconnectDrive, settings
 }) => {
   const spreadsheetLink = settings.spreadsheetId 
     ? `https://docs.google.com/spreadsheets/d/${settings.spreadsheetId}/edit`
@@ -211,7 +211,7 @@ export const MainView: React.FC<MainViewProps> = ({
           </a>
         )}
 
-        {!driveToken && (
+        {!isDriveConnected && (
           <button 
             onClick={onReconnectDrive}
             className="p-6 bg-slate-900 text-white rounded-[2.5rem] flex flex-col gap-4 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 dark:shadow-slate-900/20 group"

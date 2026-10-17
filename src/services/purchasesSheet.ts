@@ -1,6 +1,7 @@
 import { ReceiptItem, Session } from '../types';
 import { HOUSEHOLD_PERSON } from './receiptIntake';
 import { itemAmount, rateToIls } from '../utils/money';
+import { GoogleApiError } from './googleApiError';
 
 /** A cell as the Purchases sheet reads it back: its shown text and any number format. */
 export interface SheetCell {
@@ -19,7 +20,7 @@ export interface RowSpan {
   lastRow: number;
 }
 
-/** Where spreadsheets live: Google Sheets in production, memory in tests. Failures throw, carrying `status` when HTTP gave one. */
+/** Where spreadsheets live: Google Sheets in production, memory in tests. An API call that fails throws a `GoogleApiError` carrying the HTTP status. */
 export interface SpreadsheetAdapter {
   findByName(name: string): Promise<string | null>;
   /** Creates a spreadsheet whose one tab has a frozen header row. */
@@ -307,7 +308,7 @@ interface MemorySpreadsheet {
   tabs: MemoryTab[];
 }
 
-const notFound = (what: string) => Object.assign(new Error(`${what} not found`), { status: 404 });
+const notFound = (what: string) => new GoogleApiError(`${what} not found`, 404);
 
 /** A spreadsheet adapter in memory; `seed` adds an existing spreadsheet and `tab` reads one back. */
 export const createInMemorySpreadsheetAdapter = () => {
@@ -323,7 +324,7 @@ export const createInMemorySpreadsheetAdapter = () => {
 
   const tabOf = (id: string, title: string) => {
     const found = spreadsheet(id).tabs.find((t) => t.title === title);
-    if (!found) throw Object.assign(new Error(`Unable to parse range: ${title}!A1`), { status: 400 });
+    if (!found) throw new GoogleApiError(`Unable to parse range: ${title}!A1`, 400);
     return found;
   };
 

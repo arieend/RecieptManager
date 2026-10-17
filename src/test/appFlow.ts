@@ -3,7 +3,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
-/** Gives App a fresh Google Drive token, so saves sync to Drive and Sheets instead of skipping sync. */
+/** Gives App a fresh Google access token, stored under Google access's keys, so saves sync to Drive and Sheets instead of skipping sync. */
 export const signInWithDrive = (token = 'mock-token') => {
   localStorage.setItem('drive_token', token);
   localStorage.setItem('drive_token_timestamp', String(Date.now()));

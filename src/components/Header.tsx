@@ -16,7 +16,7 @@ interface HeaderProps {
   translations: Record<Language, Translations>;
   spreadsheetId?: string;
   spreadsheetName?: string;
-  driveToken: string | null;
+  isDriveConnected: boolean;
   onReconnectDrive: () => void;
   onCreateSpreadsheet?: () => void;
   isCreatingSpreadsheet?: boolean;
@@ -25,13 +25,12 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  user, language, setLanguage, onProfileClick, onSettingsClick, onMonthlySummaryClick, onLogout, translations, spreadsheetId, spreadsheetName, driveToken, onReconnectDrive, onCreateSpreadsheet, isCreatingSpreadsheet, theme, onToggleTheme 
+  user, language, setLanguage, onProfileClick, onSettingsClick, onMonthlySummaryClick, onLogout, translations, spreadsheetId, spreadsheetName, isDriveConnected, onReconnectDrive, onCreateSpreadsheet, isCreatingSpreadsheet, theme, onToggleTheme 
 }) => {
   const spreadsheetLink = spreadsheetId 
     ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`
     : null;
 
-  const isDriveConnected = !!driveToken;
   const isSheetsConnected = !!spreadsheetId;
 
   return (

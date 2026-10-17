@@ -15,7 +15,7 @@ describe('ProfileView', () => {
     onBack: vi.fn(),
     onLogout: vi.fn(),
     onReconnectDrive: vi.fn(),
-    driveToken: 'mock-token',
+    isDriveConnected: true,
     translations: translations,
     language: 'en' as const,
     deferredPrompt: null,
@@ -50,13 +50,13 @@ describe('ProfileView', () => {
     expect(mockProps.onReconnectDrive).toHaveBeenCalled();
   });
 
-  it('shows connected status when driveToken is present', () => {
+  it('shows connected status when Drive is connected', () => {
     render(<ProfileView {...mockProps} />);
     expect(screen.getByText(translations.en.driveConnected)).toBeInTheDocument();
   });
 
-  it('shows disconnected status when driveToken is null', () => {
-    render(<ProfileView {...mockProps} driveToken={null} />);
+  it('shows disconnected status when Drive is not connected', () => {
+    render(<ProfileView {...mockProps} isDriveConnected={false} />);
     expect(screen.getByText(translations.en.driveDisconnected)).toBeInTheDocument();
   });
 });

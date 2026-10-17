@@ -22,7 +22,7 @@ describe('MainView', () => {
     translations,
     language: 'en' as const,
     currencySymbol: '$',
-    driveToken: 'mock-token',
+    isDriveConnected: true,
     onReconnectDrive: vi.fn(),
     settings: {
       storagePath: 'Receipts',
@@ -62,8 +62,8 @@ describe('MainView', () => {
     expect(mockProps.onSessionClick).toHaveBeenCalledWith(mockProps.history[0]);
   });
 
-  it('shows drive warning when driveToken is missing', () => {
-    render(<MainView {...mockProps} driveToken={null} />);
+  it('shows drive warning when Drive is not connected', () => {
+    render(<MainView {...mockProps} isDriveConnected={false} />);
     expect(screen.getByText(/Connect Google Drive/i)).toBeInTheDocument();
     const reconnectBtn = screen.getByText(/Connect Google Drive/i).closest('button');
     expect(reconnectBtn).toBeInTheDocument();

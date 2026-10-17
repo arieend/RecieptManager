@@ -30,7 +30,8 @@ const classifySyncFailure = (error: unknown): SyncFailureKind => {
   const fields = typeof error === 'object' && error !== null ? (error as { status?: unknown; message?: unknown }) : {};
   const status = fields.status;
   const message = String(fields.message ?? '').toLowerCase();
-  if (status === 401 || message.includes('invalid_grant') || message.includes('401')) return 'drive-auth-expired';
+  // Drive and Sheets throw a GoogleApiError with the HTTP status; a 401 means Google rejected the access token.
+  if (status === 401) return 'drive-auth-expired';
   if (message.includes('sheets.googleapis.com') || message.includes('sheets api')) return 'sheets-disabled';
   return 'sync-failed';
 };

@@ -54,7 +54,7 @@ We test UI components by simulating user interactions and asserting on the rende
 
 ### App Flow Tests (`App.test.tsx`)
 These render the whole app and drive it the way a user does. Firebase, Gemini and `syncToCloud` are mocked at the top of the file, and the mocked Firebase auth signs the user in. `test/appFlow.ts` holds the steps:
-- `signInWithDrive()` gives App a Drive token, so saves sync instead of skipping sync.
+- `signInWithDrive()` gives App a fresh Google access token, so saves sync instead of skipping sync.
 - `uploadReceipt()` picks a receipt in the upload input, which parses it and opens ParsingReview.
 - `confirmReview()` confirms ParsingReview, which opens SessionView and auto-saves.
 
