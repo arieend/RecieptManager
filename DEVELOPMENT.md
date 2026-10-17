@@ -80,3 +80,11 @@ The app uses a custom translation system (`translations.ts`) supporting English 
 - `npm test`: Run all tests.
 - `npm run lint`: Run TypeScript type checking.
 - `npm run clean`: Remove build artifacts.
+
+## 🌳 Worktrees
+
+A new git worktree (including agent worktrees under `.claude/worktrees/`) has no `node_modules`, so `npm run check` and the pre-push hook can't run there. As long as `package.json` matches the main checkout's, link that checkout's `node_modules` instead of reinstalling. From PowerShell:
+
+`New-Item -ItemType Junction -Path <worktree>\node_modules -Target <main checkout>\node_modules`
+
+If the dependencies differ, run `npm ci` in the worktree. Before `git worktree remove`, delete the junction with `cmd /c rmdir <worktree>\node_modules`. That removes only the link, so the main checkout's `node_modules` can't be touched by a recursive delete.

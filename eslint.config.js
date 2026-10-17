@@ -22,6 +22,14 @@ export default tseslint.config(
         // `session.exchangeRate` or a destructured `exchangeRate` used in arithmetic, a fallback or JSX.
         selector: ":matches(BinaryExpression, LogicalExpression, JSXExpressionContainer) > :matches(MemberExpression[object.type='Identifier'][property.name='exchangeRate'], Identifier[name='exchangeRate'])",
         message: 'Get the rate from rateToIls, or the amount from toIls, sessionTotal or itemAmount, in src/utils/money.ts.',
+      }, {
+        // rateToIls may be the Fallback rate, which is never stored or confirmed for a new Session (ADR-0002).
+        selector: [
+          "Property[key.name='exchangeRate'] > CallExpression[callee.name='rateToIls']",
+          "AssignmentExpression[left.property.name='exchangeRate'] > CallExpression[callee.name='rateToIls']",
+          "CallExpression[callee.name=/^(set|update|confirm)\\w*Rate$/] > CallExpression[callee.name='rateToIls']",
+        ].join(', '),
+        message: 'A stored rate comes from the Rate lookup or the user. rateToIls may return the Fallback rate (ADR-0002); store session.exchangeRate or what the user typed.',
       }],
     },
   },
