@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Session } from '../types';
 import { StorageSettings } from './configService';
 import { createSessionStore, createInMemorySessionAdapter } from './sessionStore';
-import { SyncResult } from './syncService';
+import { SyncResult, SheetsSyncError } from './syncService';
 import { createReceiptFiling, ReceiptSync } from './receiptFiling';
 
 const session = (overrides: Partial<Session> = {}): Session => ({
@@ -148,12 +148,44 @@ describe('Receipt filing', () => {
     expect(history.sessions).toEqual([outcome.saved]);
   });
 
-  it('saves without links when Sheets fails after the Drive upload, so the next save uploads again', async () => {
-    const { filing } = setup(fakeSync(async () => { throw new Error('Failed to append to spreadsheet'); }));
+  const uploaded: SyncResult = {
+    driveFileId: synced.driveFileId,
+    driveLink: synced.driveLink,
+    driveFileName: synced.driveFileName,
+  };
+
+  it('saves the Drive links when Sheets fails after the Drive upload, so the next save does not upload again', async () => {
+    const sync = fakeSync(async () => { throw new SheetsSyncError(uploaded, new Error('Failed to append to spreadsheet')); });
+    const { filing, history } = setup(sync);
 
     const outcome = await filing.file('user-1', session(), { settings: settings(), driveToken: 'token' });
 
-    expect(outcome.saved.driveFileId).toBeUndefined();
+    expect(outcome.sync).toEqual({ failed: 'sync-failed' });
+    expect(outcome.saved).toMatchObject(uploaded);
     expect(outcome.saved.items.map((i) => i.sheetsLink)).toEqual([undefined, undefined]);
+    expect(history.sessions).toEqual([outcome.saved]);
+
+    await filing.file('user-1', outcome.saved, { settings: settings(), driveToken: 'token' });
+    expect(sync.calls[1][0].driveFileId).toBe('file-1');
+  });
+
+  it('reports the Sheets failure kind when Sheets fails after the Drive upload', async () => {
+    const sheetsDisabled = new Error('Google Sheets API has not been used; enable sheets.googleapis.com');
+    const { filing } = setup(fakeSync(async () => { throw new SheetsSyncError(uploaded, sheetsDisabled); }));
+
+    const outcome = await filing.file('user-1', session(), { settings: settings(), driveToken: 'token' });
+
+    expect(outcome.sync).toEqual({ failed: 'sheets-disabled' });
+    expect(outcome.saved.driveFileId).toBe('file-1');
+  });
+
+  it('reports a spreadsheet that sync created before Sheets failed', async () => {
+    const { filing } = setup(fakeSync(async () => {
+      throw new SheetsSyncError({ ...uploaded, spreadsheetId: 'sheet-new' }, new Error('Failed to append to spreadsheet'));
+    }));
+
+    const outcome = await filing.file('user-1', session(), { settings: settings({ spreadsheetId: '' }), driveToken: 'token' });
+
+    expect(outcome.spreadsheetId).toBe('sheet-new');
   });
 });

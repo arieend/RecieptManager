@@ -1,7 +1,7 @@
 import { Session } from '../types';
 import type { StorageSettings } from './configService';
 import type { SessionStore } from './sessionStore';
-import type { SyncResult } from './syncService';
+import { SheetsSyncError, type SyncResult } from './syncService';
 
 /** Uploads to Drive and appends to Sheets: `syncToCloud` in production, a fake in tests. */
 export type ReceiptSync = (session: Session, settings: StorageSettings, driveToken: string) => Promise<SyncResult>;
@@ -55,8 +55,12 @@ export const createReceiptFiling = ({ sync, store }: ReceiptFilingDeps) => {
     try {
       result = await sync(session, settings, driveToken);
     } catch (error) {
-      // syncToCloud throws away a finished Drive upload when Sheets then fails; nothing partial to keep.
       console.error('Cloud sync error:', error);
+      // A Drive upload that finished before Sheets failed is kept, so the next save doesn't upload again.
+      if (error instanceof SheetsSyncError) {
+        const saved = await store.save(userId, withLinks(session, error.synced));
+        return { saved, sync: { failed: classifySyncFailure(error.cause) }, spreadsheetId: error.synced.spreadsheetId };
+      }
       return { saved: await store.save(userId, session), sync: { failed: classifySyncFailure(error) } };
     }
 

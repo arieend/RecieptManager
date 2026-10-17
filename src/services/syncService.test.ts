@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { syncToCloud } from './syncService';
+import { syncToCloud, SheetsSyncError } from './syncService';
 import { Session } from '../types';
 import { StorageSettings } from './configService';
 import * as driveService from './driveService';
@@ -75,6 +75,36 @@ describe('syncService', () => {
         ])
       ])
     );
+  });
+
+  it('keeps the finished Drive upload when Sheets then fails', async () => {
+    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
+    vi.mocked(driveService.uploadFileToDrive).mockResolvedValue({
+      id: 'file-123',
+      name: 'Test_Store_20240101_10.00.jpg',
+      webViewLink: 'http://link'
+    });
+    const sheetsFailure = new Error('Failed to append to spreadsheet');
+    vi.mocked(sheetsService.appendToSpreadsheet).mockRejectedValueOnce(sheetsFailure);
+
+    const error = await syncToCloud(mockSession, mockSettings, mockToken).catch((e) => e);
+
+    expect(error).toBeInstanceOf(SheetsSyncError);
+    expect(error.cause).toBe(sheetsFailure);
+    expect(error.synced).toEqual({
+      driveFileId: 'file-123',
+      driveLink: 'http://link',
+      driveFileName: 'Test_Store_20240101_10.00.jpg',
+    });
+  });
+
+  it('lets a Drive failure through as is', async () => {
+    const driveFailure = new Error('Drive upload failed');
+    vi.mocked(driveService.getOrCreateFolderPath).mockResolvedValue('folder-123');
+    vi.mocked(driveService.uploadFileToDrive).mockRejectedValueOnce(driveFailure);
+
+    await expect(syncToCloud(mockSession, mockSettings, mockToken)).rejects.toBe(driveFailure);
+    expect(sheetsService.appendToSpreadsheet).not.toHaveBeenCalled();
   });
 
   it('creates a new spreadsheet if ID is missing and not found by name', async () => {
