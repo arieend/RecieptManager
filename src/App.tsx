@@ -349,8 +349,7 @@ export default function App() {
         const draft = await receiptIntake.intake(file, user.uid);
 
         // A batch has no review step, so it always saves; auto-save only governs the review screen.
-        await saveSession(draft);
-        results.push(draft);
+        if (await saveSession(draft)) results.push(draft);
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err);
       }
@@ -368,9 +367,10 @@ export default function App() {
     }
   };
 
-  const saveSession = async (sessionToUse?: Session) => {
+  /** Resolves to whether the Session was persisted; failures are reported to the user here. */
+  const saveSession = async (sessionToUse?: Session): Promise<boolean> => {
     const session = (sessionToUse && typeof sessionToUse === 'object' && 'id' in sessionToUse) ? sessionToUse : currentSession;
-    if (!session || !user) return;
+    if (!session || !user) return false;
     
     setIsSaving(true);
     try {
@@ -437,9 +437,11 @@ export default function App() {
         setView('history');
         setCurrentSession(null);
       }
+      return true;
     } catch (error: any) {
       console.error("Session save error:", error);
       setShowToast(language === 'he' ? 'שגיאה בשמירה בבסיס הנתונים' : 'Error saving to database');
+      return false;
     } finally {
       setIsSaving(false);
     }
