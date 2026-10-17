@@ -1,15 +1,15 @@
 import React from 'react';
 import { Table } from 'lucide-react';
 import { Card } from './ui/Base';
-import { ReceiptItem, Person, Session } from '../types';
-import { rateToIls } from '../utils/money';
+import { ReceiptItem, Person } from '../types';
+import { RatedSession, toIls } from '../utils/money';
 import { Translations } from '../translations';
 
 interface ItemCardProps {
   item: ReceiptItem;
   people: Person[];
   currencySymbol: string;
-  session: Pick<Session, 'currency' | 'exchangeRate'>;
+  session: RatedSession;
   onToggleAssignment: (itemId: string, personId: string) => void;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   translations: Translations;
@@ -19,7 +19,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   item, people, currencySymbol, session, onToggleAssignment, onUpdateQuantity, translations 
 }) => {
   const { currency } = session;
-  const unitPriceIls = item.price * rateToIls(session);
+  const unitPriceIls = toIls(item.price, session);
 
   return (
     <Card className="p-4 space-y-4">

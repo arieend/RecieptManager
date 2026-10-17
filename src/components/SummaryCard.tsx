@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calculator } from 'lucide-react';
 import { Card } from './ui/Base';
 import { Totals } from '../utils/calculations';
-import { rateToIls } from '../utils/money';
-import { Session } from '../types';
+import { RatedSession, toIls } from '../utils/money';
 import { Language, Translations } from '../translations';
 
 interface SummaryCardProps {
@@ -12,7 +11,7 @@ interface SummaryCardProps {
   language: Language;
   translations: Record<Language, Translations>;
   currencySymbol: string;
-  session: Pick<Session, 'currency' | 'exchangeRate'>;
+  session: RatedSession;
 }
 
 export const SummaryCard: React.FC<SummaryCardProps> = ({ 
@@ -22,7 +21,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const t = translations[language];
 
   const { currency } = session;
-  const rate = rateToIls(session);
 
   return (
     <Card className="p-6 bg-emerald-600 text-white border-none shadow-xl shadow-emerald-200 dark:shadow-emerald-900/30 overflow-hidden relative">
@@ -50,7 +48,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
             <p className="text-4xl font-black">{currencySymbol}{totals.total.toFixed(2)}</p>
             {currency !== 'ILS' && (
               <p className="text-xs font-bold opacity-80 mt-1">
-                ≈ ₪{(totals.total * rate).toFixed(2)}
+                ≈ ₪{toIls(totals.total, session).toFixed(2)}
               </p>
             )}
           </div>
@@ -92,7 +90,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                     <div className="text-right">
                       <p className="font-black text-lg">{currencySymbol}{p.amount.toFixed(2)}</p>
                       {currency !== 'ILS' && (
-                        <p className="text-[10px] font-bold opacity-70">≈ ₪{(p.amount * rate).toFixed(2)}</p>
+                        <p className="text-[10px] font-bold opacity-70">≈ ₪{toIls(p.amount, session).toFixed(2)}</p>
                       )}
                     </div>
                   </div>
@@ -103,7 +101,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                     <div className="text-right">
                       <p className="font-black text-lg">{currencySymbol}{totals.unassignedAmount.toFixed(2)}</p>
                       {currency !== 'ILS' && (
-                        <p className="text-[10px] font-bold opacity-70">≈ ₪{(totals.unassignedAmount * rate).toFixed(2)}</p>
+                        <p className="text-[10px] font-bold opacity-70">≈ ₪{toIls(totals.unassignedAmount, session).toFixed(2)}</p>
                       )}
                     </div>
                   </div>
@@ -116,7 +114,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 <div className="text-right">
                   <p className="font-black text-lg">{currencySymbol}{c.amount.toFixed(2)}</p>
                   {currency !== 'ILS' && (
-                    <p className="text-[10px] font-bold opacity-70">≈ ₪{(c.amount * rate).toFixed(2)}</p>
+                    <p className="text-[10px] font-bold opacity-70">≈ ₪{toIls(c.amount, session).toFixed(2)}</p>
                   )}
                 </div>
               </div>
@@ -127,7 +125,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 <div className="text-right">
                   <p className="font-black text-lg">{currencySymbol}{tag.amount.toFixed(2)}</p>
                   {currency !== 'ILS' && (
-                    <p className="text-[10px] font-bold opacity-70">≈ ₪{(tag.amount * rate).toFixed(2)}</p>
+                    <p className="text-[10px] font-bold opacity-70">≈ ₪{toIls(tag.amount, session).toFixed(2)}</p>
                   )}
                 </div>
               </div>
