@@ -4,13 +4,16 @@ import { createReceiptsSpreadsheet, appendToSpreadsheet, detectSpreadsheetDateFo
 describe('sheetsService', () => {
   const mockToken = 'mock-token';
 
+  let fetchMock = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    fetchMock = vi.fn();
+    global.fetch = fetchMock;
   });
 
   it('createReceiptsSpreadsheet returns spreadsheet ID', async () => {
-    (global.fetch as any)
+    fetchMock
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ spreadsheetId: 'sheet-123', sheets: [{ properties: { sheetId: 0 } }] }),
@@ -33,7 +36,7 @@ describe('sheetsService', () => {
 
   it('detectSpreadsheetDateFormat detects existing date format from numberFormat', async () => {
     // 1. Metadata response
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         properties: { locale: 'iw_IL' },
@@ -42,7 +45,7 @@ describe('sheetsService', () => {
     });
 
     // 2. Grid data response with explicit numberFormat
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         sheets: [
@@ -79,7 +82,7 @@ describe('sheetsService', () => {
 
   it('detectSpreadsheetDateFormat detects existing date format from formattedValue string', async () => {
     // 1. Metadata response
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         properties: { locale: 'iw_IL' },
@@ -88,7 +91,7 @@ describe('sheetsService', () => {
     });
 
     // 2. Grid data response with formattedValue
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         sheets: [
@@ -113,7 +116,7 @@ describe('sheetsService', () => {
   });
 
   it('detectSpreadsheetDateFormat falls back to US locale format when sheet is empty', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         properties: { locale: 'en_US' },
@@ -121,7 +124,7 @@ describe('sheetsService', () => {
       }),
     });
 
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({
         sheets: [{ data: [{ rowData: [] }] }]
@@ -134,7 +137,7 @@ describe('sheetsService', () => {
   });
 
   it('ensureDateColumnFormat sends batchUpdate request with DATE numberFormat', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({}),
     });
@@ -151,7 +154,7 @@ describe('sheetsService', () => {
   });
 
   it('appendToSpreadsheet appends rows correctly', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({}),
     });
@@ -169,7 +172,7 @@ describe('sheetsService', () => {
   });
 
   it('throws error if spreadsheet creation fails', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       json: () => Promise.resolve({ error: { message: 'Quota exceeded' } }),
     });

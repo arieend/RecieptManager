@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import type { Person, ReceiptItem } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -101,7 +102,7 @@ export const getExchangeRate = async (fromCurrency: string, toCurrency: string =
   }
 };
 
-export const interpretChatCommand = async (command: string, items: any[], people: any[]) => {
+export const interpretChatCommand = async (command: string, items: Pick<ReceiptItem, 'id' | 'name'>[], people: Pick<Person, 'id' | 'name'>[]) => {
   const model = "gemini-3-flash-preview";
   
   const prompt = `

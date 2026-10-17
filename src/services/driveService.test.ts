@@ -4,13 +4,16 @@ import { getOrCreateFolder, getOrCreateFolderPath, uploadFileToDrive, DRIVE_API_
 describe('driveService', () => {
   const mockToken = 'mock-token';
 
+  let fetchMock = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    fetchMock = vi.fn();
+    global.fetch = fetchMock;
   });
 
   it('getOrCreateFolder returns existing folder ID', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ files: [{ id: 'folder-123' }] }),
     });
@@ -25,12 +28,12 @@ describe('driveService', () => {
 
   it('getOrCreateFolder creates folder if not found', async () => {
     // First call: search returns empty
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ files: [] }),
     });
     // Second call: create folder
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ id: 'new-folder-456' }),
     });
@@ -42,7 +45,7 @@ describe('driveService', () => {
 
   it('getOrCreateFolderPath builds path correctly', async () => {
     // Mock getOrCreateFolder behavior for each step
-    (global.fetch as any)
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ files: [{ id: 'id-A' }] }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ files: [{ id: 'id-B' }] }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ files: [{ id: 'id-C' }] }) });
@@ -53,7 +56,7 @@ describe('driveService', () => {
   });
 
   it('uploadFileToDrive uploads file correctly', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ id: 'file-789', name: 'test.jpg', webViewLink: 'http://link' }),
     });

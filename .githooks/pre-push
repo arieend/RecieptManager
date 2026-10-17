@@ -1,4 +1,4 @@
 #!/bin/sh
-# Runs what CI runs (typecheck + tests with coverage floors) before anything leaves this machine.
+# Runs what CI runs (typecheck, ESLint, tests with coverage floors) before anything leaves this machine.
 # Installed by `npm install` via the prepare script; skip once with `git push --no-verify`.
 exec npm run check

@@ -17,7 +17,7 @@ export interface SyncResult {
 export class SheetsSyncError extends Error {
   name = 'SheetsSyncError';
   constructor(readonly synced: SyncResult, readonly cause: unknown) {
-    super(String((cause as any)?.message ?? cause));
+    super(cause instanceof Error ? cause.message : String(cause));
   }
 }
 

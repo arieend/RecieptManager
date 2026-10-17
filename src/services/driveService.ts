@@ -30,7 +30,7 @@ export const getOrCreateFolder = async (token: string, folderName: string, paren
   }
 
   // Create the folder if not found
-  const body: any = {
+  const body: { name: string; mimeType: string; parents?: string[] } = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
   };
@@ -50,9 +50,7 @@ export const getOrCreateFolder = async (token: string, folderName: string, paren
   const responseData = await createResponse.json();
   if (!createResponse.ok) {
     const errorMessage = responseData.error?.message || 'Failed to create folder';
-    const error: any = new Error(errorMessage);
-    error.status = createResponse.status;
-    throw error;
+    throw Object.assign(new Error(errorMessage), { status: createResponse.status });
   }
   return responseData.id;
 };
@@ -130,9 +128,7 @@ export const uploadFileToDrive = async (
   if (!response.ok) {
     const errorData = await response.json();
     const errorMessage = errorData.error?.message || 'Failed to upload to Drive';
-    const error: any = new Error(errorMessage);
-    error.status = response.status;
-    throw error;
+    throw Object.assign(new Error(errorMessage), { status: response.status });
   }
 
   return await response.json();

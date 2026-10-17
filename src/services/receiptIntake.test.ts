@@ -199,7 +199,7 @@ describe('Receipt intake', () => {
     });
 
     it.each([null, 'oops', 42])('reports parse-failed when the parser returns %j', async (junk) => {
-      const intake = intakeWith({ parser: async () => junk as any });
+      const intake = intakeWith({ parser: async () => junk as unknown as RawParsedReceipt });
 
       await expect(intake.intake(JPEG, 'user-1')).rejects.toMatchObject({ kind: 'parse-failed' });
     });
