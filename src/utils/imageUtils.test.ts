@@ -19,7 +19,7 @@ describe('imageUtils', () => {
       constructor() {
         setTimeout(() => this.onload(), 10);
       }
-    } as any;
+    } as unknown as typeof Image;
 
     // Mock Canvas
     const mockCtx = {
@@ -36,7 +36,7 @@ describe('imageUtils', () => {
         };
       }
       return {};
-    }) as any;
+    }) as unknown as typeof document.createElement;
   });
 
   it('resizes an image correctly', async () => {

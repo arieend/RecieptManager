@@ -2,16 +2,18 @@ import React from 'react';
 import { User, LogOut, Settings, Table, Sun, Moon, Cloud, CloudOff, RefreshCw, AlertCircle, TrendingUp } from 'lucide-react';
 import { Button } from './ui/Base';
 import { IsraelFlag, USFlag } from './Flags';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { Language, Translations } from '../translations';
 
 interface HeaderProps {
-  user: any;
+  user: Pick<FirebaseUser, 'photoURL'>;
   language: 'en' | 'he';
   setLanguage: (lang: 'en' | 'he') => void;
   onProfileClick: () => void;
   onSettingsClick: () => void;
   onMonthlySummaryClick?: () => void;
   onLogout: () => void;
-  translations: any;
+  translations: Record<Language, Translations>;
   spreadsheetId?: string;
   spreadsheetName?: string;
   driveToken: string | null;

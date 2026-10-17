@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { ArrowLeft, History, Trash2, ChevronRight, Calendar, Receipt, Table, TrendingUp } from 'lucide-react';
 import { Button, Card } from './ui/Base';
 import { ConfirmModal } from './Modal';
+import { Session } from '../types';
+import { Language, Translations } from '../translations';
 import { StorageSettings } from '../services/configService';
 
 interface HistoryViewProps {
-  history: any[];
+  history: Session[];
   onBack: () => void;
-  onSessionClick: (session: any) => void;
+  onSessionClick: (session: Session) => void;
   onDeleteSession: (id: string) => void;
   onClearAll: () => void;
   onMonthlySummaryClick?: () => void;
-  translations: any;
+  translations: Record<Language, Translations>;
   language: 'en' | 'he';
   currencySymbol: string;
   settings: StorageSettings;

@@ -2,6 +2,7 @@ import React from 'react';
 import { Table } from 'lucide-react';
 import { Card } from './ui/Base';
 import { ReceiptItem, Person } from '../types';
+import { Translations } from '../translations';
 
 interface ItemCardProps {
   item: ReceiptItem;
@@ -11,7 +12,7 @@ interface ItemCardProps {
   exchangeRate: number;
   onToggleAssignment: (itemId: string, personId: string) => void;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
-  translations: any;
+  translations: Translations;
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({ 

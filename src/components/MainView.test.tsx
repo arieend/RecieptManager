@@ -2,12 +2,16 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MainView } from './MainView';
 import { translations } from '../translations';
+import { Session } from '../types';
 
 describe('MainView', () => {
   const mockProps = {
     user: { displayName: 'Test User' },
     history: [
-      { id: '1', storeName: 'Store 1', total: 100, createdAt: new Date().toISOString(), items: [] }
+      {
+        id: '1', userId: 'user-1', storeName: 'Store 1', createdAt: new Date().toISOString(),
+        items: [], people: [], tax: 0, tip: 0, total: 100, currency: 'USD', exchangeRate: 1,
+      } satisfies Session,
     ],
     onScan: vi.fn(),
     onUpload: vi.fn(),
