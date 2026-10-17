@@ -3,7 +3,7 @@ import { ArrowLeft, History, Trash2, ChevronRight, Calendar, Receipt, Table, Tre
 import { Button, Card } from './ui/Base';
 import { ConfirmModal } from './Modal';
 import { Session } from '../types';
-import { sessionTotal } from '../utils/money';
+import { isRateUnconfirmed, sessionTotal } from '../utils/money';
 import { Language, Translations } from '../translations';
 import { StorageSettings } from '../services/configService';
 
@@ -126,9 +126,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       ≈ ₪{sessionTotal(session).ils.toFixed(2)}
                     </p>
                   )}
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
-                    {translations[language].completed}
-                  </p>
+                  {isRateUnconfirmed(session) ? (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+                      {translations[language].waitingForRate}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
+                      {translations[language].completed}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button 

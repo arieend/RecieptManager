@@ -186,6 +186,8 @@ export interface Translations {
   thisMonth: string;
   customPeriod: string;
   vsPreviousYear: string;
+  waitingForRate: string;
+  batchWaitingForRate: string;
   rateToIlsLabel: string;
   acceptRate: string;
   rateAccepted: string;
@@ -379,6 +381,8 @@ export const translations: Record<Language, Translations> = {
     thisMonth: "This Month",
     customPeriod: "Choose Month & Year",
     vsPreviousYear: "vs previous year",
+    waitingForRate: "Waiting for rate",
+    batchWaitingForRate: "{count} waiting for an exchange rate",
     rateToIlsLabel: "Rate to ILS",
     acceptRate: "Accept rate",
     rateAccepted: "Rate accepted",
@@ -570,6 +574,8 @@ export const translations: Record<Language, Translations> = {
     thisMonth: "חודש נוכחי",
     customPeriod: "בחר שנה וחודש",
     vsPreviousYear: "לעומת שנה קודמת",
+    waitingForRate: "ממתין לשער",
+    batchWaitingForRate: "{count} ממתינות לשער חליפין",
     rateToIlsLabel: "שער לשקל",
     acceptRate: "אשר שער",
     rateAccepted: "השער אושר",
