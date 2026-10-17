@@ -1,8 +1,9 @@
 import type { ReactNode, Ref } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 import { syncToCloud } from './services/syncService';
+import { signInWithDrive, uploadReceipt, confirmReview } from './test/appFlow';
 
 // Mock Firebase
 vi.mock('firebase/app', () => ({
@@ -134,6 +135,10 @@ vi.mock('./services/syncService', async (importOriginal) => ({
   })),
 }));
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 describe('App Camera Functionality', () => {
   it('triggers the scanner when "Take Photo" is clicked', async () => {
     // Mock getUserMedia
@@ -164,20 +169,8 @@ describe('App Camera Functionality', () => {
   });
 
   it('starts parsing when a file is selected via the file input', async () => {
-    // Mock URL.createObjectURL
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock');
-
     render(<App />);
-    
-    // Find the hidden file input
-    const inputs = document.querySelectorAll('input[type="file"]');
-    const fileInput = Array.from(inputs).find(input => !input.getAttribute('capture')) as HTMLInputElement;
-    
-    // Create a mock file
-    const file = new File(['(⌐□_□)'], 'receipt.png', { type: 'image/png' });
-    
-    // Trigger the change event
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    uploadReceipt();
     
     // Wait for parsing state
     await waitFor(() => {
@@ -196,15 +189,11 @@ describe('App Camera Functionality', () => {
 
 describe('Saving a receipt', () => {
   it('appends its rows to the Purchases sheet once when auto-save files it and the user then presses Save', async () => {
-    localStorage.setItem('drive_token', 'mock-token');
-    localStorage.setItem('drive_token_timestamp', String(Date.now()));
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock');
+    signInWithDrive();
     render(<App />);
-    const inputs = document.querySelectorAll('input[type="file"]');
-    const fileInput = Array.from(inputs).find(input => !input.getAttribute('capture')) as HTMLInputElement;
-    fireEvent.change(fileInput, { target: { files: [new File(['(⌐□_□)'], 'receipt.png', { type: 'image/png' })] } });
+    uploadReceipt();
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }, { timeout: 5000 }));
+    await confirmReview();
     await waitFor(() => expect(syncToCloud).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Later edits don't reach it/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));

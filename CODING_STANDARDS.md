@@ -28,3 +28,11 @@ When code under test produces a structure whose shape another module defines (sh
 Look for `toEqual([...])` or `arrayContaining([...])` over a row or tuple whose order is defined somewhere else, and ask whether the assertion would notice a value landing under the wrong name.
 
 _Why:_ the Sheets row test checked `'Tag1', 'Person 1'` by position, so person names written under the "Labels" header passed until an architecture review read the header list next to the row.
+
+## A fix goes red on the reported path
+
+A bug fix comes with a test that fails on the steps the issue reports, through the code the user actually runs. Tests of the module that holds the fix don't count on their own: the bug may live in how a caller wires that module. When the issue describes a user flow (confirm, then Save), the red test is an App flow test (`App.test.tsx`, with the steps in `test/appFlow.ts`).
+
+Look for a test that hands the code under test a value its real caller never passes: a result fed into the next call by hand, a Session built with a field that no screen ever sets. Then find the real caller and check it does the same.
+
+_Why:_ the fix for #18 (rows appended to the Purchases sheet on every save) passed its Receipt filing tests, which passed each save's result into the next by hand. `App.tsx` discarded that result, so Save in SessionView still appended the rows again. Only the spec review caught it.
