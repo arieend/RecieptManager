@@ -370,16 +370,20 @@ export default function App() {
     }
   };
 
+  /** Shows a toast and resolves once it has cleared. */
+  const flashToast = (message: string, ms = 3000) => new Promise<void>((resolve) => {
+    setShowToast(message);
+    setTimeout(() => { setShowToast(null); resolve(); }, ms);
+  });
+
   const showSyncFailure = (kind: SyncFailureKind) => {
     if (kind === 'drive-auth-expired') {
-      setShowToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.');
       setDriveToken(null);
       localStorage.removeItem('drive_token');
-    } else if (kind === 'sheets-disabled') {
-      setShowToast(t.sheetsApiDisabled);
-    } else {
-      setShowToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud');
+      return flashToast(language === 'he' ? 'פג תוקף החיבור ל-Google Drive. אנא התחבר מחדש.' : 'Google Drive session expired. Please reconnect.', 5000);
     }
+    if (kind === 'sheets-disabled') return flashToast(t.sheetsApiDisabled, 5000);
+    return flashToast(language === 'he' ? 'שגיאה בסנכרון לענן' : 'Error syncing to cloud', 5000);
   };
 
   /** Resolves to whether the Session was persisted; failures are reported to the user here. */
@@ -397,11 +401,11 @@ export default function App() {
         saveSettings(newSettings);
       }
 
+      // The Session is saved either way; after a sync failure the user sees that first, then "saved".
       if (typeof sync === 'object') {
-        showSyncFailure(sync.failed);
+        void showSyncFailure(sync.failed).then(() => flashToast(t.sessionSaved));
       } else {
-        setShowToast(t.sessionSaved);
-        setTimeout(() => setShowToast(null), 3000);
+        void flashToast(t.sessionSaved);
       }
       if (!sessionToUse) {
         setView('history');

@@ -12,8 +12,9 @@ Terms (Session, Draft Session, Receipt intake, …) are defined in [`GLOSSARY.md
 
 1.  **Receipt intake** (`services/receiptIntake.ts`): an upload or camera capture becomes a Draft Session. Image preparation (`utils/imageUtils.ts` → `prepareReceiptImage`) and the Gemini receipt parser (`services/geminiService.ts`) are passed in from `App.tsx`.
 2.  **Review and edit** (`components/ParsingReview.tsx`, `components/SessionView.tsx`): the user checks the draft, assigns items, adjusts totals.
-3.  **Save** (`App.tsx` → `saveSession`): the Session is written to Firestore (`sessions` collection).
-4.  **Cloud sync** (`services/syncService.ts`): the receipt file goes to Google Drive (`services/driveService.ts`) and item rows to Google Sheets (`services/sheetsService.ts`).
+3.  **Receipt filing** (`services/receiptFiling.ts`): `App.tsx` → `saveSession` files the Session in one call, then turns the outcome into toasts and settings updates.
+    1.  **Cloud sync** (`services/syncService.ts`), when there is a Drive token and either the image is not on Drive yet or Sheets sync is on: the receipt image goes to Google Drive (`services/driveService.ts`), then item rows to Google Sheets (`services/sheetsService.ts`). A Drive upload that finished is kept even if Sheets then fails.
+    2.  **Save** through the **Session store** (`services/sessionStore.ts`), with the Drive and Sheets links merged in, even if sync failed. Production writes to Firestore (`sessions` collection) via `services/firestoreSessionAdapter.ts`.
 
 ## 📊 Data Models
 

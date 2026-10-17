@@ -110,12 +110,31 @@ describe('Receipt filing', () => {
     expect(outcome.spreadsheetId).toBe('sheet-new');
   });
 
-  it('reports no spreadsheet ID when the settings already had one', async () => {
-    const { filing } = setup();
+  it.each([
+    ['sync returned none', fakeSync(), settings(), 'token'],
+    ['sync failed', fakeSync(async () => { throw new Error('Network request failed'); }), settings({ spreadsheetId: '' }), 'token'],
+    ['sync was skipped', fakeSync(async () => ({ ...synced, spreadsheetId: 'sheet-new' })), settings({ spreadsheetId: '' }), null],
+  ])('reports no spreadsheet ID when %s', async (_, sync, storage, driveToken) => {
+    const { filing } = setup(sync);
 
-    const outcome = await filing.file('user-1', session(), { settings: settings(), driveToken: 'token' });
+    const outcome = await filing.file('user-1', session(), { settings: storage, driveToken });
 
-    expect(outcome.spreadsheetId).toBeUndefined();
+    expect(outcome).not.toHaveProperty('spreadsheetId');
+  });
+
+  const noLinks = { imageUrl: '', driveFileId: '', driveLink: '', driveFileName: '', spreadsheetLink: '' };
+
+  it.each([
+    ['sync is done without links', fakeSync(async () => ({})), 'token'],
+    ['sync is skipped', fakeSync(), null],
+    ['sync fails', fakeSync(async () => { throw new Error('Network request failed'); }), 'token'],
+  ])('saves missing links as empty strings when %s, so a merge write clears stored ones', async (_, sync, driveToken) => {
+    const { filing } = setup(sync);
+    const draft = session({ imageUrl: undefined, driveFileId: undefined, driveLink: undefined, driveFileName: undefined, spreadsheetLink: undefined });
+
+    const outcome = await filing.file('user-1', draft, { settings: settings(), driveToken });
+
+    expect(outcome.saved).toMatchObject(noLinks);
   });
 
   it('lets a Session store failure through after syncing', async () => {
