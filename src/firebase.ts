@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { initializeFirestore, collection, doc, setDoc, getDoc, addDoc, query, where, onSnapshot, orderBy, limit, getDocFromServer, deleteDoc, getDocs } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, User } from 'firebase/auth';
+import { initializeFirestore, doc, setDoc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 export enum OperationType {
@@ -31,7 +31,8 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+/** Logs a Firestore failure with the signed-in user's auth details and returns it as an Error. */
+export function describeFirestoreError(error: unknown, operationType: OperationType, path: string | null): Error {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -51,7 +52,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  return new Error(JSON.stringify(errInfo));
 }
 
 const app = initializeApp(firebaseConfig);
@@ -83,8 +84,13 @@ async function testConnection() {
 }
 testConnection();
 
-export { 
-  collection, doc, setDoc, getDoc, addDoc, query, where, 
-  onSnapshot, orderBy, limit, signInWithPopup, signOut, deleteDoc, 
-  getDocs, GoogleAuthProvider 
-};
+export const saveUserProfile = (user: User) =>
+  setDoc(doc(db, 'users', user.uid), {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    createdAt: new Date().toISOString()
+  }, { merge: true });
+
+export { signInWithPopup, signOut, GoogleAuthProvider };

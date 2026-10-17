@@ -4,12 +4,14 @@ import { createReceiptIntake, RawParsedReceipt } from './receiptIntake';
 
 const JPEG = 'data:image/jpeg;base64,abc';
 const NOW = new Date('2026-03-15T09:30:00.000Z').getTime();
+const DRAFT_ID = 'draft-0b7c';
 
 const makeIntake = (response: RawParsedReceipt) =>
   createReceiptIntake({
     parser: async () => response,
     prepare: async (input) => input as string,
     now: () => NOW,
+    newId: () => DRAFT_ID,
   });
 
 describe('Receipt intake', () => {
@@ -128,6 +130,7 @@ describe('Receipt intake', () => {
       parser: async (dataUrl, mime) => { calls.push([dataUrl, mime]); return {}; },
       prepare: async () => prepared,
       now: () => NOW,
+      newId: () => DRAFT_ID,
     });
 
     const draft = await intake.intake(new File(['x'], 'receipt.bin'), 'user-1');
@@ -136,10 +139,10 @@ describe('Receipt intake', () => {
     expect(draft.imageUrl).toBe(prepared);
   });
 
-  it('takes the draft ID from the clock', async () => {
+  it('takes the draft ID from newId', async () => {
     const draft = await makeIntake({}).intake(JPEG, 'user-1');
 
-    expect(draft.id).toBe(String(NOW));
+    expect(draft.id).toBe(DRAFT_ID);
   });
 
   describe('recorded Gemini responses', () => {
@@ -176,6 +179,7 @@ describe('Receipt intake', () => {
         parser: async () => ({}),
         prepare: async () => JPEG,
         now: () => NOW,
+        newId: () => DRAFT_ID,
         ...deps,
       });
 
