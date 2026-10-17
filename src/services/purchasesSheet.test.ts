@@ -48,7 +48,7 @@ describe('Purchases sheet', () => {
 
       expect(created).toBe(true);
       expect(memory.tab(spreadsheetId, 'Purchases')).toEqual([
-        ['Date', 'Store', 'Item Name', 'Price (NIS)', 'Category', 'AI Tags', 'Assigned To', 'Receipt Link', 'Original Amount', 'Exchange Rate'],
+        ['Date', 'Store', 'Item Name', 'Amount (NIS)', 'Category', 'AI Tags', 'Assigned To', 'Receipt Link', 'Original Amount', 'Exchange Rate'],
       ]);
       expect(memory.dateFormats).toEqual([{ spreadsheetId, sheetId: 0, column: 0, rows: undefined, sheetsPattern: 'dd/mm/yyyy' }]);
     });
@@ -75,19 +75,19 @@ describe('Purchases sheet', () => {
   });
 
   describe('append', () => {
-    it('writes one row per ReceiptItem under the matching headers', async () => {
+    it('writes one row per ReceiptItem under the matching headers, with its Line amount', async () => {
       const { spreadsheetId } = await sheet.connect('Receipts');
 
       await sheet.append(spreadsheetId, session(), { driveLink: 'http://drive/new', driveFileName: 'new.jpg' });
 
       expect(rowsByHeader(memory.tab(spreadsheetId, 'Purchases'))).toEqual([
         {
-          'Date': '20/05/2024', 'Store': 'Test Store', 'Item Name': 'Milk', 'Price (NIS)': '10', 'Category': 'Food',
+          'Date': '20/05/2024', 'Store': 'Test Store', 'Item Name': 'Milk', 'Amount (NIS)': '10', 'Category': 'Food',
           'AI Tags': 'dairy, fridge', 'Assigned To': 'Dana', 'Receipt Link': '=HYPERLINK("http://drive/new", "new.jpg")',
           'Original Amount': '', 'Exchange Rate': '',
         },
         {
-          'Date': '20/05/2024', 'Store': 'Test Store', 'Item Name': 'Bread', 'Price (NIS)': '5', 'Category': 'Food',
+          'Date': '20/05/2024', 'Store': 'Test Store', 'Item Name': 'Bread', 'Amount (NIS)': '10', 'Category': 'Food',
           'AI Tags': '', 'Assigned To': HOUSEHOLD_PERSON.name, 'Receipt Link': '=HYPERLINK("http://drive/new", "new.jpg")',
           'Original Amount': '', 'Exchange Rate': '',
         },
@@ -115,8 +115,30 @@ describe('Purchases sheet', () => {
 
       await sheet.append(spreadsheetId, session({ currency: 'USD', exchangeRate: 3.5 }));
 
+      expect(rowsByHeader(memory.tab(spreadsheetId, 'Purchases'))).toMatchObject([
+        { 'Amount (NIS)': '35', 'Original Amount': '10.00 USD', 'Exchange Rate': '3.5' },
+        { 'Amount (NIS)': '35', 'Original Amount': '10.00 USD', 'Exchange Rate': '3.5' },
+      ]);
+    });
+
+    it('records the fallback rate for a foreign receipt with no rate', async () => {
+      const { spreadsheetId } = await sheet.connect('Receipts');
+
+      await sheet.append(spreadsheetId, session({ currency: 'EUR', exchangeRate: 1 }));
+
       expect(rowsByHeader(memory.tab(spreadsheetId, 'Purchases'))[0]).toMatchObject({
-        'Price (NIS)': '35', 'Original Amount': '10.00 USD', 'Exchange Rate': '3.5',
+        'Amount (NIS)': '40', 'Original Amount': '10.00 EUR', 'Exchange Rate': '4',
+      });
+    });
+
+    it("includes each item's share of tax and tip, rounded to the cent", async () => {
+      const { spreadsheetId } = await sheet.connect('Receipts');
+
+      await sheet.append(spreadsheetId, session({ total: 0, tax: 2.5, tip: 2, currency: 'USD', exchangeRate: 3.71 }));
+
+      // ratio 24.5 / 20: Milk 12.25 USD → 45.4475 NIS
+      expect(rowsByHeader(memory.tab(spreadsheetId, 'Purchases'))[0]).toMatchObject({
+        'Amount (NIS)': '45.45', 'Original Amount': '12.25 USD', 'Exchange Rate': '3.71',
       });
     });
 
@@ -142,6 +164,14 @@ describe('Purchases sheet', () => {
       await sheet.append('old', session());
 
       expect(memory.tab('old', 'Purchases')[0]).toEqual(OLD_HEADERS);
+    });
+
+    it('writes the Line amount under the old Price (NIS) header of an existing sheet', async () => {
+      memory.seed('old', { name: 'Receipts', tabs: [{ sheetId: 0, title: 'Purchases', rows: [headerRow(OLD_HEADERS)] }] });
+
+      await sheet.append('old', session({ total: 30 }));
+
+      expect(rowsByHeader(memory.tab('old', 'Purchases')).map((row) => row['Price (NIS)'])).toEqual(['15', '15']);
     });
 
     it('writes to the Purchases tab and links to it, wherever it sits', async () => {
