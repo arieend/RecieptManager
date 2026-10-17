@@ -193,6 +193,7 @@ export interface Translations {
   rateAccepted: string;
   rateUnknown: string;
   ilsEstimated: string;
+  sheetKeepsFiledRows: string;
   batchProcessed: string;
 }
 
@@ -390,6 +391,7 @@ export const translations: Record<Language, Translations> = {
     rateAccepted: "Rate accepted",
     rateUnknown: "Rate unknown: enter it to confirm",
     ilsEstimated: "₪ amounts are estimated until you confirm the rate",
+    sheetKeepsFiledRows: "The Purchases sheet keeps the rows already written. Later edits don't reach it.",
     batchProcessed: "Successfully processed {count} receipts",
   },
   he: {
@@ -585,6 +587,7 @@ export const translations: Record<Language, Translations> = {
     rateAccepted: "השער אושר",
     rateUnknown: "השער לא ידוע: הזן אותו כדי לאשר",
     ilsEstimated: "הסכומים בשקלים משוערים עד שתאשר את השער",
+    sheetKeepsFiledRows: "גיליון הרכישות שומר את השורות שכבר נכתבו. עריכות מאוחרות לא יגיעו אליו.",
     batchProcessed: "עובדו {count} קבלות בהצלחה",
   }
 };
