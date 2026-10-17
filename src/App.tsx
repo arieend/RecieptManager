@@ -37,6 +37,7 @@ import { ProfileView } from './components/ProfileView';
 import { ConfirmModal } from './components/Modal';
 import { ParsingReview } from './components/ParsingReview';
 import { MonthlySummaryView } from './components/MonthlySummaryView';
+import { isRateUnconfirmed } from './utils/money';
 
 const rateLookup = createFrankfurterRateLookup();
 
@@ -364,7 +365,9 @@ export default function App() {
       setView('session');
     } else if (results.length > 1) {
       setView('history');
-      setShowToast(language === 'he' ? `עובדו ${results.length} קבלות בהצלחה` : `Successfully processed ${results.length} receipts`);
+      const processed = language === 'he' ? `עובדו ${results.length} קבלות בהצלחה` : `Successfully processed ${results.length} receipts`;
+      const waiting = results.filter(isRateUnconfirmed).length;
+      setShowToast(waiting > 0 ? `${processed} · ${t.batchWaitingForRate.replace('{count}', String(waiting))}` : processed);
     }
   };
 
@@ -678,6 +681,7 @@ export default function App() {
             <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
               <ParsingReview 
                 session={reviewSession}
+                rateLookup={rateLookup}
                 onConfirm={handleConfirmReview}
                 onRescan={handleRescanReview}
                 onCancel={handleCancelReview}

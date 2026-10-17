@@ -102,6 +102,58 @@ describe('Receipt filing', () => {
     expect(history.sessions).toEqual([outcome.saved]);
   });
 
+  const unconfirmed = (overrides: Partial<Session> = {}) =>
+    session({ currency: 'USD', exchangeRate: 3.1268, rateConfirmed: false, ...overrides });
+
+  it('files a Session with an Unconfirmed rate with Sheets off, still uploading its image, and not as a failure', async () => {
+    const sync = fakeSync(async () => ({ driveFileId: 'file-1', driveLink: synced.driveLink, driveFileName: synced.driveFileName }));
+    const { filing, history } = setup(sync);
+
+    const outcome = await filing.file('user-1', unconfirmed(), { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toHaveLength(1);
+    expect(sync.calls[0][0].imageUrl).toBe('data:image/jpeg;base64,abc');
+    expect(sync.calls[0][1]).toMatchObject({ syncToSheets: false, spreadsheetId: 'sheet-1' });
+    expect(outcome.sync).toBe('done');
+    expect(outcome.saved).toMatchObject({ driveFileId: 'file-1', rateConfirmed: false });
+    expect(history.sessions).toEqual([outcome.saved]);
+  });
+
+  it('skips sync for a Session with an Unconfirmed rate whose image is already on Drive', async () => {
+    const sync = fakeSync();
+    const { filing, history } = setup(sync);
+
+    const outcome = await filing.file('user-1', unconfirmed({ driveFileId: 'file-0' }), { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toEqual([]);
+    expect(outcome.sync).toBe('skipped');
+    expect(history.sessions).toEqual([outcome.saved]);
+  });
+
+  it('syncs to Sheets once the rate is confirmed', async () => {
+    const sync = fakeSync(async () => ({ driveFileId: 'file-1' }));
+    const { filing } = setup(sync);
+    const first = await filing.file('user-1', unconfirmed(), { settings: settings(), driveToken: 'token' });
+
+    await filing.file('user-1', { ...first.saved, rateConfirmed: true }, { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls).toHaveLength(2);
+    expect(sync.calls[1][1].syncToSheets).toBe(true);
+  });
+
+  it.each([
+    ['a confirmed rate', session({ currency: 'USD', exchangeRate: 3.1268, rateConfirmed: true })],
+    ['an old Session with no rate flag', session({ currency: 'USD', exchangeRate: 1 })],
+  ])('syncs a Session with %s to Sheets as before', async (_, draft) => {
+    const sync = fakeSync();
+    const { filing } = setup(sync);
+
+    const outcome = await filing.file('user-1', draft, { settings: settings(), driveToken: 'token' });
+
+    expect(sync.calls[0][1]).toEqual(settings());
+    expect(outcome.sync).toBe('done');
+  });
+
   it('reports the spreadsheet ID when sync had to find or create the spreadsheet', async () => {
     const { filing } = setup(fakeSync(async () => ({ ...synced, spreadsheetId: 'sheet-new' })));
 

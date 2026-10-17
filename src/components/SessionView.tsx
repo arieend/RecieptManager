@@ -295,12 +295,12 @@ export const SessionView: React.FC<SessionViewProps> = ({
               <div className="mt-3 flex items-center justify-between gap-2">
                 <div className="space-y-1">
                   <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-widest">
-                    {translations[language].rateUnconfirmed}
+                    {translations[language].waitingForRate}
                   </span>
                   <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{translations[language].ilsEstimated}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => updateExchangeRate(rateToIls(session))}>
-                  {translations[language].confirmSuggestedRate}
+                  {translations[language].acceptRate}
                 </Button>
               </div>
             )}

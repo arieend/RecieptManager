@@ -155,13 +155,13 @@ describe('SessionView', () => {
 
     it('shows the badge and marks ILS amounts as estimated while the rate is unconfirmed', () => {
       render(<SessionView {...mockProps} session={unconfirmed} />);
-      expect(screen.getByText(translations.en.rateUnconfirmed)).toBeInTheDocument();
+      expect(screen.getByText(translations.en.waitingForRate)).toBeInTheDocument();
       expect(screen.getByText(translations.en.ilsEstimated)).toBeInTheDocument();
     });
 
     it('shows neither once the rate is confirmed', () => {
       render(<SessionView {...mockProps} session={{ ...unconfirmed, rateConfirmed: true }} />);
-      expect(screen.queryByText(translations.en.rateUnconfirmed)).not.toBeInTheDocument();
+      expect(screen.queryByText(translations.en.waitingForRate)).not.toBeInTheDocument();
       expect(screen.queryByText(translations.en.ilsEstimated)).not.toBeInTheDocument();
     });
 
@@ -196,7 +196,7 @@ describe('SessionView', () => {
 
     it('confirms the suggested rate in one tap', () => {
       render(<SessionView {...mockProps} session={unconfirmed} />);
-      fireEvent.click(screen.getByRole('button', { name: translations.en.confirmSuggestedRate }));
+      fireEvent.click(screen.getByRole('button', { name: translations.en.acceptRate }));
       expect(mockProps.setSession).toHaveBeenLastCalledWith(
         expect.objectContaining({ exchangeRate: 3.1268, rateConfirmed: true }),
       );
